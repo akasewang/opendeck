@@ -1,0 +1,83 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1751963470948,
+      "tag": "0000_natural_ender_wiggin",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1781785255654,
+      "tag": "0001_opendeck_local_mirror",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1781808247751,
+      "tag": "0002_github_discovery_sources",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1782210000000,
+      "tag": "0003_remove_auth_ai",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1782864000000,
+      "tag": "0004_add_auth",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1782870806882,
+      "tag": "0005_groovy_scourge",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1782891785469,
+      "tag": "0006_wet_talisman",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1782892305995,
+      "tag": "0007_redundant_princess_powerful",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1782892988469,
+      "tag": "0008_lush_solo",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1783270744622,
+      "tag": "0009_smooth_valkyrie",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1783605720503,
+      "tag": "0010_natural_sentry",
+      "breakpoints": true
+    }
+  ]
+}

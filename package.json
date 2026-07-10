@@ -1,0 +1,55 @@
+{
+  "name": "opendeck",
+  "author": "akashdewangan",
+  "license": "MIT",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "format": "biome format --write .",
+    "gen:colors": "tsx src/operations/cli.ts data gen-language-colors",
+    "db:push": "drizzle-kit push",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx --env-file=.env src/operations/cli.ts db migrate",
+    "auth:sync-admins": "tsx --env-file=.env src/operations/cli.ts auth sync-admins",
+    "ingest:trending": "tsx --env-file=.env src/operations/cli.ts ingest trending",
+    "ingest:discovery": "tsx --env-file=.env src/operations/cli.ts ingest discovery",
+    "ingest:metadata": "tsx --env-file=.env src/operations/cli.ts ingest metadata"
+  },
+  "dependencies": {
+    "@iconify/react": "^6.0.2",
+    "@neondatabase/serverless": "^1.1.0",
+    "@radix-ui/react-select": "^2.3.1",
+    "@radix-ui/react-tooltip": "^1.2.10",
+    "clsx": "^2.1.1",
+    "drizzle-orm": "^0.45.2",
+    "framer-motion": "^12.35.2",
+    "next": "^15.5.19",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "tailwind-merge": "^3.5.0",
+    "use-debounce": "^10.0.5"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.0",
+    "@eslint/eslintrc": "^3",
+    "@tailwindcss/postcss": "^4.2.1",
+    "@types/node": "^24.13.2",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "drizzle-kit": "^0.31.10",
+    "eslint": "^9.39.4",
+    "eslint-config-next": "^15.5.19",
+    "linguist-languages": "^9.4.0",
+    "tailwindcss": "^4.2.1",
+    "tsx": "^4.22.4",
+    "typescript": "^5"
+  },
+  "overrides": {
+    "esbuild": "^0.25.0",
+    "postcss": "^8.5.15"
+  }
+}
