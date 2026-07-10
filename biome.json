@@ -20,7 +20,8 @@
       "preset": "recommended",
       "suspicious": {
         "noArrayIndexKey": "off",
-        "noShadowRestrictedNames": "off"
+        "noShadowRestrictedNames": "off",
+        "noControlCharactersInRegex": "off"
       },
       "security": {
         "noDangerouslySetInnerHtml": "off"

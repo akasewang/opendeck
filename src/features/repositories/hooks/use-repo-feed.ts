@@ -1,14 +1,34 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useDebounce } from 'use-debounce'
 import type { GithubRepoApiItem, Repo } from '@/features/repositories/types'
 import { mapApiRepo, mergeUniqueRepos } from '@/features/repositories/utils'
 
 const REPO_FEED_PAGE_SIZE = 25
 
+type LanguageOption = { value: string; label: string }
+
+function mergeLanguageOptions(current: LanguageOption[], repos: Repo[]): LanguageOption[] {
+  const byValue = new Map(current.map((option) => [option.value, option]))
+  let added = false
+
+  for (const repo of repos) {
+    const label = repo.language
+    if (!label) continue
+    const value = label.toLowerCase()
+    if (byValue.has(value)) continue
+    byValue.set(value, { value, label })
+    added = true
+  }
+
+  if (!added) return current
+  return Array.from(byValue.values()).sort((a, b) => a.label.localeCompare(b.label))
+}
+
 export function useRepoFeed(endpoint: string, descriptionFallback?: string) {
   const [results, setResults] = useState<Repo[]>([])
+  const [languageOptions, setLanguageOptions] = useState<LanguageOption[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [query, setQuery] = useState('')
@@ -54,6 +74,7 @@ export function useRepoFeed(endpoint: string, descriptionFallback?: string) {
         if (controller.signal.aborted) return
 
         setResults((current) => (isFirstPage ? mapped : mergeUniqueRepos(current, mapped)))
+        setLanguageOptions((current) => mergeLanguageOptions(current, mapped))
         setTotal(data?.total_count || 0)
         setError(null)
       } catch {
@@ -76,17 +97,6 @@ export function useRepoFeed(endpoint: string, descriptionFallback?: string) {
 
     return () => controller.abort()
   }, [page, debouncedQuery, language, endpoint, descriptionFallback, refreshKey])
-
-  const languageOptions = useMemo(() => {
-    const languages = results
-      .map((repo) => repo.language)
-      .filter((lang): lang is string => Boolean(lang))
-
-    return Array.from(new Set(languages)).map((lang) => ({
-      value: lang.toLowerCase(),
-      label: lang,
-    }))
-  }, [results])
 
   const hasMore = results.length < total
 

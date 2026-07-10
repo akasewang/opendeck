@@ -8,20 +8,23 @@ import RepoScatter, { type ScatterItem } from '@/features/landing/components/rep
 import { useHomeClock } from '@/features/landing/hooks/use-home-clock'
 import { useSoundPreference } from '@/hooks/use-sound-preference'
 
+const OPENDECK_WIDTH_PER_FONT_PX = 5.0881
+
 export default function Hero({ icons = [] }: { icons?: ScatterItem[] }) {
   const clock = useHomeClock()
   const { soundEnabled } = useSoundPreference()
 
   return (
-    <main className="relative h-screen w-full overflow-hidden bg-background text-foreground">
+    <main className="relative h-dvh w-full overflow-hidden bg-background text-foreground">
       <SiteHeader />
 
-      <section className="relative flex h-screen w-full flex-col px-4 pb-12 pt-[38px]">
+      <section className="relative flex h-dvh w-full flex-col px-4 pb-12 pt-[38px]">
         <div className="pointer-events-auto relative z-10 w-full">
           <PianoTitle
             text="opendeck"
             as="h1"
             sound={soundEnabled}
+            widthPerFontPx={OPENDECK_WIDTH_PER_FONT_PX}
             className="font-display font-normal tracking-tight text-primary"
           />
         </div>

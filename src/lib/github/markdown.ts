@@ -38,7 +38,7 @@ export function sanitizeRepositoryHtml(html: string) {
     .replace(BLOCKED_TAG_RE, '')
     .replace(EVENT_HANDLER_ATTR_RE, '')
     .replace(STRIPPED_ATTR_RE, '')
-    .replace(URL_ATTR_RE, (match, attr: string, value: string) =>
+    .replace(URL_ATTR_RE, (_match, attr: string, value: string) =>
       hasUnsafeProtocol(value) ? '' : ` ${attr}=${value}`,
     )
 }

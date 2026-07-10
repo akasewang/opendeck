@@ -148,7 +148,7 @@ Global semantic tokens live in `src/app/globals.css`. Component-specific styling
 
 Motion-heavy UI respects `prefers-reduced-motion`. Page curtain transitions are skipped between dashboard routes and for reduced-motion users. The repository scatter falls back to a static layout for reduced-motion users.
 
-App Router metadata defines titles, descriptions, canonical URLs, Open Graph metadata and Twitter Card metadata. `src/app/sitemap.ts`, `src/app/robots.ts`, `src/app/opengraph-image.tsx` and `src/app/twitter-image.tsx` are generated from public site configuration only.
+App Router metadata defines titles, descriptions, canonical URLs, Open Graph metadata and Twitter Card metadata. `src/app/sitemap.ts` and `src/app/robots.ts` are generated from public site configuration. Route-specific `opengraph-image.tsx` files provide generated cards, while the landing page uses `public/landing-preview.jpg` from page metadata.
 
 ## Security
 

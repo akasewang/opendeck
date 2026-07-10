@@ -14,6 +14,7 @@ const PAGE_LIFT = 72
 const PAGE_DROP = 56
 const REVEAL_DELAY = 40
 const REVEAL_PAGE_AT = 180
+const REVEAL_FALLBACK_MS = 3000
 
 const ROUTE_LABELS: Record<string, string> = {
   '/': 'home',
@@ -111,7 +112,6 @@ export default function CurtainProvider({ children }: { children: React.ReactNod
   const anims = useRef<Animation[]>([])
   const timeoutIds = useRef<number[]>([])
   const frameIds = useRef<number[]>([])
-  const pendingPathRef = useRef<string | null>(null)
   const [label, setLabel] = useState('opendeck')
   const layout = useLabelLayout(label)
 
@@ -224,11 +224,13 @@ export default function CurtainProvider({ children }: { children: React.ReactNod
     }
 
     clearScheduled()
-    clearAnims()
-    await wait(REVEAL_DELAY)
-
     panel.style.opacity = '1'
+    panel.style.transform = 'translateY(0%)'
+    blur.style.opacity = '1'
     if (page) page.style.transform = `translateY(${PAGE_DROP}px)`
+    clearAnims()
+
+    await wait(REVEAL_DELAY)
 
     const panelAnim = track(
       panel.animate([{ transform: 'translateY(0%)' }, { transform: 'translateY(-100%)' }], {
@@ -267,7 +269,6 @@ export default function CurtainProvider({ children }: { children: React.ReactNod
     if (phaseRef.current !== 'covered') return
 
     phaseRef.current = 'revealing'
-    pendingPathRef.current = null
 
     scheduleFrame(() => {
       scheduleFrame(() => {
@@ -296,8 +297,6 @@ export default function CurtainProvider({ children }: { children: React.ReactNod
         return
       }
 
-      const targetPath = url.pathname
-
       if (
         shouldSkipCurtain(window.location.pathname, url.pathname) ||
         window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -307,15 +306,15 @@ export default function CurtainProvider({ children }: { children: React.ReactNod
       }
 
       phaseRef.current = 'covering'
-      pendingPathRef.current = targetPath
       setLabel(labelFor(url.pathname))
       router.prefetch(target)
       lockScroll()
       await playCover()
       phaseRef.current = 'covered'
       router.push(target)
+      scheduleTimeout(revealCommittedRoute, REVEAL_FALLBACK_MS)
     },
-    [lockScroll, playCover, router],
+    [lockScroll, playCover, revealCommittedRoute, router, scheduleTimeout],
   )
 
   useEffect(() => {
@@ -352,9 +351,7 @@ export default function CurtainProvider({ children }: { children: React.ReactNod
 
   useEffect(() => {
     if (!pathname) return
-    if (phaseRef.current === 'covered' && pendingPathRef.current === pathname) {
-      revealCommittedRoute()
-    }
+    revealCommittedRoute()
   }, [pathname, revealCommittedRoute])
 
   const labelText = label.toUpperCase()

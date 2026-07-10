@@ -5,7 +5,6 @@ type SpinningCircularTextProps = Omit<React.ComponentProps<'div'>, 'children'> &
   charSpacing?: number
   fontSize?: string
   spinClassName?: string
-  renderChar?: (char: string, index: number) => React.ReactNode
 }
 
 export function SpinningCircularText({
@@ -13,7 +12,6 @@ export function SpinningCircularText({
   charSpacing = 1,
   fontSize = '1rem',
   spinClassName,
-  renderChar,
   className,
   style,
   ...props
@@ -53,7 +51,7 @@ export function SpinningCircularText({
       >
         {text.split('').map((char, index) => (
           <span key={index} style={{ '--sc-char-index': index } as React.CSSProperties}>
-            {renderChar ? renderChar(char, index) : char}
+            {char}
           </span>
         ))}
       </div>

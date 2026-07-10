@@ -45,8 +45,9 @@ function installAudioUnlock() {
 
 const BASE_FREQUENCY = 523.25
 const SEMITONE_RANGE = 14
+const NOTE_VOLUME = 0.24
 
-function emitNote(ctx: AudioContext, index: number, total: number, volume: number) {
+function emitNote(ctx: AudioContext, index: number, total: number) {
   const progress = total <= 1 ? 0.5 : index / (total - 1)
   const semitones = Math.round((progress - 0.5) * SEMITONE_RANGE)
   const freq = BASE_FREQUENCY * 2 ** (semitones / 12)
@@ -58,7 +59,7 @@ function emitNote(ctx: AudioContext, index: number, total: number, volume: numbe
 
   const now = ctx.currentTime
   gain.gain.setValueAtTime(0, now)
-  gain.gain.linearRampToValueAtTime(volume, now + 0.004)
+  gain.gain.linearRampToValueAtTime(NOTE_VOLUME, now + 0.004)
   gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.18)
 
   osc.connect(gain).connect(ctx.destination)
@@ -66,19 +67,19 @@ function emitNote(ctx: AudioContext, index: number, total: number, volume: numbe
   osc.stop(now + 0.2)
 }
 
-function playNote(index: number, total: number, volume: number) {
+function playNote(index: number, total: number) {
   const ctx = getCtx()
   if (!ctx) return
 
   if (ctx.state === 'running') {
-    emitNote(ctx, index, total, volume)
+    emitNote(ctx, index, total)
     return
   }
 
   ctx
     .resume()
     .then(() => {
-      if (ctx.state === 'running') emitNote(ctx, index, total, volume)
+      if (ctx.state === 'running') emitNote(ctx, index, total)
     })
     .catch(() => {})
 }
@@ -89,9 +90,9 @@ type PianoTitleProps = {
   className?: string
   letterClassName?: string
   sound?: boolean
-  volume?: number
   as?: ElementType
   interactive?: boolean
+  widthPerFontPx?: number
 }
 
 export default function PianoTitle({
@@ -100,18 +101,21 @@ export default function PianoTitle({
   className,
   letterClassName,
   sound = true,
-  volume = 0.24,
   as: Tag = 'div',
   interactive = true,
+  widthPerFontPx,
 }: PianoTitleProps) {
   const containerRef = useRef<HTMLElement | null>(null)
   const lettersRef = useRef<HTMLSpanElement | null>(null)
   const measureRef = useRef<HTMLSpanElement | null>(null)
+  const usesContainerFit = typeof widthPerFontPx === 'number'
   const letters = Array.from(text)
   const fitLetters = Array.from(fitText ?? text)
   const [pulsing, setPulsing] = useState<boolean[]>(() => letters.map(() => false))
 
   const fitToWidth = useCallback(() => {
+    if (usesContainerFit) return
+
     const el = lettersRef.current
     const container = containerRef.current
     if (!el || !container) return
@@ -126,9 +130,11 @@ export default function PianoTitle({
     if (!naturalWidth) return
 
     el.style.fontSize = `${(BASE_FONT_SIZE_PX * container.clientWidth) / naturalWidth}px`
-  }, [])
+  }, [usesContainerFit])
 
   useLayoutEffect(() => {
+    if (usesContainerFit) return
+
     fitToWidth()
 
     const container = containerRef.current
@@ -144,7 +150,7 @@ export default function PianoTitle({
       cancelled = true
       observer.disconnect()
     }
-  }, [fitToWidth])
+  }, [fitToWidth, usesContainerFit])
 
   useEffect(() => {
     setPulsing(Array.from(text).map(() => false))
@@ -161,7 +167,7 @@ export default function PianoTitle({
       next[i] = true
       return next
     })
-    if (sound) playNote(i, letters.length, volume)
+    if (sound) playNote(i, letters.length)
   }
 
   const handleAnimationEnd = (i: number) => {
@@ -176,12 +182,17 @@ export default function PianoTitle({
   return (
     <Tag
       ref={containerRef as Ref<HTMLElement>}
-      className={cn('relative block w-full leading-none text-primary', className)}
+      className={cn(
+        'relative block w-full leading-none text-primary',
+        usesContainerFit ? '[container-type:inline-size]' : undefined,
+        className,
+      )}
     >
       <span className="sr-only">{text}</span>
       <span
         ref={lettersRef}
         aria-hidden="true"
+        style={usesContainerFit ? { fontSize: `calc(100cqi / ${widthPerFontPx})` } : undefined}
         className="inline-block whitespace-nowrap uppercase leading-none [text-box-edge:cap_alphabetic] [text-box-trim:trim-both]"
       >
         {letters.map((char, i) => (

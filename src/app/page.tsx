@@ -1,8 +1,23 @@
+import type { Metadata } from 'next'
+import { APP_CONFIG } from '@/config/app'
 import Hero from '@/features/landing/components/hero'
 import type { ScatterItem } from '@/features/landing/components/repo-scatter'
 import { listOrganizations } from '@/lib/repositories'
+import { createPageMetadata } from '@/lib/seo/metadata'
 
 export const dynamic = 'force-dynamic'
+
+export const metadata: Metadata = createPageMetadata({
+  title: `${APP_CONFIG.name} - Open Source Discovery`,
+  description: APP_CONFIG.description,
+  path: '/',
+  image: {
+    url: '/landing-preview.jpg',
+    width: 1200,
+    height: 630,
+    alt: 'OPENDECK - open source discovery',
+  },
+})
 
 const MAX_ICONS = 105
 const MAX_ICON_SOURCE_ORGS = MAX_ICONS * 4

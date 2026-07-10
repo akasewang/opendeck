@@ -2,7 +2,6 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/utils/cn'
 import {
   COLUMN_BOUNDS,
-  COLUMN_RESPONSIVE,
   REPOSITORY_COLUMN_BOUNDS,
   REPOSITORY_COLUMN_DIVIDER,
   TABLE_CELL_BORDER,
@@ -44,7 +43,6 @@ export function RepoRowSkeleton({ index = 0 }: { index?: number }) {
           'overflow-hidden px-3 py-3 sm:px-4',
           TABLE_CELL_BORDER,
           COLUMN_BOUNDS.language,
-          COLUMN_RESPONSIVE.language,
         )}
       >
         <Skeleton className="h-5 w-16" />
@@ -54,7 +52,6 @@ export function RepoRowSkeleton({ index = 0 }: { index?: number }) {
           'overflow-hidden px-3 py-3 sm:px-4',
           TABLE_CELL_BORDER,
           COLUMN_BOUNDS.topics,
-          COLUMN_RESPONSIVE.topics,
         )}
       >
         <div className="flex gap-1.5">
@@ -67,7 +64,6 @@ export function RepoRowSkeleton({ index = 0 }: { index?: number }) {
           'overflow-hidden px-3 py-3 sm:px-4',
           TABLE_CELL_BORDER,
           COLUMN_BOUNDS.open_issues_count,
-          COLUMN_RESPONSIVE.open_issues_count,
         )}
       >
         <Skeleton className={cn('h-3.5', issuesWidth)} />
@@ -86,7 +82,6 @@ export function RepoRowSkeleton({ index = 0 }: { index?: number }) {
           'overflow-hidden px-3 py-3 sm:px-4',
           TABLE_CELL_BORDER,
           COLUMN_BOUNDS.contribution_score,
-          COLUMN_RESPONSIVE.contribution_score,
         )}
       >
         <Skeleton className="h-6 w-[8.5rem] rounded-md" />

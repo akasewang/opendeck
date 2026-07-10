@@ -23,7 +23,7 @@ export default async function Layout({ children }: { children: React.ReactNode }
     <div className="dashboard relative flex h-screen flex-col overflow-hidden bg-background text-foreground">
       <div className="relative z-10 flex min-h-0 flex-1 flex-col md:flex-row">
         <Sidenav />
-        <main className="relative mt-14 flex min-h-0 min-w-0 flex-1 flex-col md:mt-0">
+        <main className="relative mt-20 flex min-h-0 min-w-0 flex-1 flex-col md:mt-0">
           <DashboardScroll>{children}</DashboardScroll>
         </main>
       </div>

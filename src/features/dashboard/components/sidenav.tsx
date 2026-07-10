@@ -375,8 +375,8 @@ export default function Sidenav() {
   const closeMobileMenu = () => setIsOpen(false)
 
   return (
-    <aside className="absolute z-30 w-full flex-shrink-0 bg-sidebar md:relative md:w-[104px] md:bg-transparent">
-      <div className="flex h-14 items-center justify-between border-b border-border px-4 md:hidden">
+    <aside className="absolute z-30 w-full flex-shrink-0 md:relative md:w-[104px]">
+      <div className="mx-3 mt-3 flex h-14 items-center justify-between rounded-lg border border-border/60 bg-sidebar/95 px-4 shadow-[0_14px_45px_rgba(0,0,0,0.28)] backdrop-blur md:hidden">
         <div className="w-36">
           <Link href="/" onClick={closeMobileMenu} className="block w-full">
             <PianoTitle
@@ -451,7 +451,7 @@ export default function Sidenav() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="fixed inset-x-0 bottom-0 top-14 z-20 cursor-default bg-black/50 backdrop-blur-sm md:hidden"
+            className="fixed inset-x-0 bottom-0 top-[68px] z-20 cursor-default bg-black/50 backdrop-blur-sm md:hidden"
           />
         )}
       </AnimatePresence>
@@ -464,9 +464,9 @@ export default function Sidenav() {
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-            className="relative z-30 overflow-hidden border-b border-border bg-sidebar shadow-lg md:hidden"
+            className="relative z-30 mx-3 mt-2 overflow-hidden rounded-lg border border-border/60 bg-sidebar/95 shadow-[0_14px_45px_rgba(0,0,0,0.28)] backdrop-blur md:hidden"
           >
-            <div className="max-h-[calc(100dvh-3.5rem)] overflow-y-auto">
+            <div className="max-h-[calc(100dvh-5.5rem)] overflow-y-auto">
               <NavigationSection
                 variant="mobile"
                 expanded

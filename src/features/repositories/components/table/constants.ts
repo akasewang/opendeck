@@ -14,9 +14,3 @@ export const COLUMN_BOUNDS: Partial<Record<ColumnKey, string>> = {
   contribution_score: 'min-w-[10.75rem]',
 }
 
-export const COLUMN_RESPONSIVE: Partial<Record<ColumnKey, string>> = {
-  language: 'hidden lg:table-cell',
-  topics: 'hidden xl:table-cell',
-  open_issues_count: 'hidden md:table-cell',
-  contribution_score: 'hidden sm:table-cell',
-}

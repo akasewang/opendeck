@@ -36,11 +36,6 @@ const ORGANIZATION_COLUMN_CLASS =
 const ORGANIZATION_HEADER_CLASS =
   'sticky left-0 z-20 min-w-[14rem] border-r border-row-divider bg-background sm:min-w-[16rem] md:min-w-[18rem]'
 const TOP_REPO_COLUMN_CLASS = 'min-w-[16rem] max-w-[26rem] md:min-w-[20rem] md:max-w-[34rem]'
-const ORGANIZATION_COLUMN_RESPONSIVE: Record<string, string> = {
-  Repos: 'hidden sm:table-cell',
-  Language: 'hidden md:table-cell',
-  'Top repo': 'hidden lg:table-cell',
-}
 
 const gridStagger: Variants = {
   hidden: {},
@@ -514,10 +509,10 @@ function OrganizationSkeleton() {
           <Skeleton className="h-3.5 w-32 max-w-full" />
         </div>
       </td>
-      <td className={cn(TABLE_CELL_CLASS, ORGANIZATION_COLUMN_RESPONSIVE.Language)}>
+      <td className={TABLE_CELL_CLASS}>
         <Skeleton className="h-5 w-20" />
       </td>
-      <td className={cn(TABLE_CELL_CLASS, ORGANIZATION_COLUMN_RESPONSIVE.Repos)}>
+      <td className={TABLE_CELL_CLASS}>
         <Skeleton className="h-3.5 w-12" />
       </td>
       <td className={TABLE_CELL_CLASS}>
@@ -527,7 +522,6 @@ function OrganizationSkeleton() {
         className={cn(
           TABLE_CELL_CLASS,
           TOP_REPO_COLUMN_CLASS,
-          ORGANIZATION_COLUMN_RESPONSIVE['Top repo'],
         )}
       >
         <Skeleton className="h-3.5 w-44 max-w-full" />
@@ -885,14 +879,14 @@ function OrganizationRow({
           </span>
         </div>
       </td>
-      <td className={cn(TABLE_CELL_CLASS, ORGANIZATION_COLUMN_RESPONSIVE.Language)}>
+      <td className={TABLE_CELL_CLASS}>
         {organization.topLanguage && languageStyle ? (
           <ColorfulTag style={languageStyle}>{organization.topLanguage}</ColorfulTag>
         ) : (
           <SimpleTag>-</SimpleTag>
         )}
       </td>
-      <td className={cn(TABLE_CELL_CLASS, ORGANIZATION_COLUMN_RESPONSIVE.Repos)}>
+      <td className={TABLE_CELL_CLASS}>
         <span className="inline-flex items-center gap-1.5 whitespace-nowrap font-mono font-medium tabular-nums tracking-wider text-sm text-foreground">
           <Icon
             icon="ri:git-repository-line"
@@ -911,7 +905,6 @@ function OrganizationRow({
         className={cn(
           TABLE_CELL_CLASS,
           TOP_REPO_COLUMN_CLASS,
-          ORGANIZATION_COLUMN_RESPONSIVE['Top repo'],
         )}
       >
         <span className="block truncate text-foreground">{organization.topRepo}</span>
@@ -1153,7 +1146,7 @@ export default function OrganizationsPage() {
                   {ORGANIZATION_HEADERS.map((label, index) => (
                     <th
                       key={label}
-                      className={`${HEADER_CELL_CLASS} ${index === 0 ? ORGANIZATION_HEADER_CLASS : ''} ${label === 'Top repo' ? TOP_REPO_COLUMN_CLASS : ''} ${ORGANIZATION_COLUMN_RESPONSIVE[label] ?? ''}`}
+                      className={`${HEADER_CELL_CLASS} ${index === 0 ? ORGANIZATION_HEADER_CLASS : ''} ${label === 'Top repo' ? TOP_REPO_COLUMN_CLASS : ''}`}
                     >
                       {label}
                     </th>
@@ -1206,7 +1199,7 @@ export default function OrganizationsPage() {
                   {ORGANIZATION_HEADERS.map((label, index) => (
                     <th
                       key={label}
-                      className={`${HEADER_CELL_CLASS} ${index === 0 ? ORGANIZATION_HEADER_CLASS : ''} ${label === 'Top repo' ? TOP_REPO_COLUMN_CLASS : ''} ${ORGANIZATION_COLUMN_RESPONSIVE[label] ?? ''}`}
+                      className={`${HEADER_CELL_CLASS} ${index === 0 ? ORGANIZATION_HEADER_CLASS : ''} ${label === 'Top repo' ? TOP_REPO_COLUMN_CLASS : ''}`}
                     >
                       {label}
                     </th>

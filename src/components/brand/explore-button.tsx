@@ -32,6 +32,7 @@ export default function ExploreButton() {
     const ROT_DAMPING = 10
 
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    const finePointer = window.matchMedia('(pointer: fine)').matches
 
     let cx = 0
     let cy = 0
@@ -123,16 +124,11 @@ export default function ExploreButton() {
       const angle = (Math.atan2(dy, dx) * 180) / Math.PI + BASE_OFFSET
       rot.target += ((((angle - rot.target) % 360) + 540) % 360) - 180
 
-      if (reduceMotion) {
-        for (const a of [ox, oy, ix, iy, rot]) a.current = a.target
-        paint()
-        return
-      }
       start()
     }
 
     measure()
-    if (reduceMotion) return
+    if (reduceMotion || !finePointer) return
 
     window.addEventListener('mousemove', handleMove)
     window.addEventListener('resize', measure)
@@ -165,15 +161,15 @@ export default function ExploreButton() {
         </div>
       </div>
 
-      <div className="pointer-events-none absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 sm:block">
+      <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 [--explore-ring-font-size:9.2px] [--explore-ring-radius:-40.8px] sm:[--explore-ring-font-size:11.5px] sm:[--explore-ring-radius:-51px]">
         <div ref={textRef} className="will-change-transform">
           <SpinningCircularText
             text="EXPLORE OPENDECK • DISCOVER NOW • "
             charSpacing={1.35}
-            fontSize="11.5px"
+            fontSize="var(--explore-ring-font-size)"
             spinClassName="[animation-duration:10s] group-hover:[animation-duration:3.5s]"
             className="font-sans font-bold tracking-[0.25em] text-primary"
-            style={{ '--sc-radius': '-51px' } as React.CSSProperties}
+            style={{ '--sc-radius': 'var(--explore-ring-radius)' } as React.CSSProperties}
           />
         </div>
       </div>

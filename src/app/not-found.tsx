@@ -1,9 +1,19 @@
 import type { Metadata } from 'next'
 import ExploreButton from '@/components/brand/explore-button'
 import SiteHeader from '@/components/layout/site-header'
+import { createOpenGraph } from '@/lib/seo/metadata'
+
+const NOT_FOUND_TITLE = 'Page Not Found'
+const NOT_FOUND_DESCRIPTION =
+  'This page does not exist. Head back to OpenDeck to keep discovering open source repositories.'
 
 export const metadata: Metadata = {
-  title: 'Page Not Found',
+  title: NOT_FOUND_TITLE,
+  description: NOT_FOUND_DESCRIPTION,
+  openGraph: createOpenGraph({
+    title: NOT_FOUND_TITLE,
+    description: NOT_FOUND_DESCRIPTION,
+  }),
   robots: {
     index: false,
     follow: false,

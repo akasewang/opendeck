@@ -6,7 +6,6 @@ import { useAuth } from '@/features/auth/auth-provider'
 import { ExpandedDetails } from '@/features/repositories/components/repo-expanded-details'
 import {
   COLUMN_BOUNDS,
-  COLUMN_RESPONSIVE,
   clearUrlParam,
   LOADING_MORE_SKELETON_COUNT,
   REPOSITORY_COLUMN_BOUNDS,
@@ -272,7 +271,6 @@ export default function RepoTable({
                               'px-3 py-3 text-sm align-middle sm:px-4',
                               TABLE_CELL_BORDER,
                               COLUMN_BOUNDS[key],
-                              COLUMN_RESPONSIVE[key],
                               key !== 'topics' && 'whitespace-nowrap',
                               key === 'name' && [
                                 'sticky left-0 z-10 overflow-hidden transition-colors group-hover:bg-row-hover',
