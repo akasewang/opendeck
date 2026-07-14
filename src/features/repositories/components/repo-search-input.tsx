@@ -4,6 +4,7 @@ import { Icon } from '@iconify/react'
 import { AnimatePresence, motion } from 'framer-motion'
 import Image from 'next/image'
 import { type KeyboardEvent, useEffect, useId, useMemo, useRef, useState } from 'react'
+import { fieldVariants } from '@/components/ui/field'
 import { Kbd } from '@/components/ui/kbd'
 import { ScrollShadow } from '@/components/ui/scroll-shadow'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -202,7 +203,9 @@ export function RepoSearchInput({
             : undefined
         }
         aria-busy={isLoading || isPicking || undefined}
-        className="peer h-10 w-full rounded-lg border border-border/40 bg-background py-0 pl-10 pr-10 text-sm leading-none text-foreground shadow-sm transition-[border-color,box-shadow] placeholder:text-muted-foreground hover:border-border/70 focus:border-border/80 focus:shadow-md focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+        className={fieldVariants(
+          'peer h-10 rounded-lg py-0 pl-10 pr-10 leading-none shadow-sm focus:shadow-md',
+        )}
       />
       <span className="pointer-events-none absolute inset-y-0 left-3.5 flex items-center text-muted-foreground transition-colors peer-focus:text-primary">
         <Icon icon="ri:search-line" className="h-4 w-4" />

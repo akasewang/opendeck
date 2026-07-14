@@ -96,6 +96,9 @@
   --color-success: var(--success);
   --color-info: var(--info);
 
+  --color-success-surface: color-mix(in oklab, var(--success) 14%, var(--card));
+  --color-destructive-surface: color-mix(in oklab, var(--destructive) 14%, var(--card));
+
   --shadow-sm: var(--shadow-sm);
   --shadow-md: var(--shadow-md);
   --shadow-lg: var(--shadow-lg);
@@ -377,8 +380,8 @@ body,
 }
 
 .skeleton {
-  --skeleton-base: color-mix(in oklab, var(--color-muted) 58%, var(--color-background));
-  --skeleton-sheen: color-mix(in oklab, var(--color-foreground) 10%, var(--skeleton-base));
+  --skeleton-base: color-mix(in oklab, var(--color-foreground) 9%, transparent);
+  --skeleton-sheen: color-mix(in oklab, var(--color-foreground) 10%, transparent);
   background-color: var(--skeleton-base);
   background-image: linear-gradient(
     90deg,

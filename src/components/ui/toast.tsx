@@ -32,8 +32,8 @@ export function toast(message: string, options?: { tone?: ToastTone }) {
 }
 
 const TONE_STYLES: Record<ToastTone, string> = {
-  success: 'border-success/30 bg-success/10 text-success',
-  error: 'border-destructive/30 bg-destructive/10 text-destructive',
+  success: 'border-success/30 bg-success-surface text-success',
+  error: 'border-destructive/30 bg-destructive-surface text-destructive',
 }
 
 const TONE_ICONS: Record<ToastTone, string> = {
@@ -70,7 +70,7 @@ export function Toaster() {
             exit={{ opacity: 0, x: 24, scale: 0.96 }}
             transition={MOTION_SPRING.toast}
             className={cn(
-              'pointer-events-auto flex w-full items-center gap-2.5 rounded-lg border px-3.5 py-2.5 text-sm font-medium shadow-lg backdrop-blur-md sm:w-auto sm:max-w-md',
+              'pointer-events-auto flex w-full items-center gap-2.5 rounded-lg border px-3.5 py-2.5 text-sm font-medium shadow-lg sm:w-auto sm:max-w-md',
               TONE_STYLES[item.tone],
             )}
           >

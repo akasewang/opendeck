@@ -20,8 +20,6 @@ type AuthPanelProps = {
   className?: string
 }
 
-const FIELD_CLASS = 'h-10 disabled:cursor-not-allowed disabled:opacity-60'
-
 function Field({
   icon,
   label,
@@ -30,7 +28,7 @@ function Field({
   return (
     <label className="block space-y-1.5">
       <span className="text-xs font-medium text-muted-foreground">{label}</span>
-      <Input icon={icon} className={FIELD_CLASS} {...inputProps} />
+      <Input icon={icon} className="h-10" {...inputProps} />
     </label>
   )
 }

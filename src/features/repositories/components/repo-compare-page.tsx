@@ -435,7 +435,7 @@ export default function ComparePage() {
                 <tr>
                   <th
                     scope="col"
-                    className="sticky left-0 z-10 border-b border-border/50 bg-background"
+                    className="sticky left-0 z-10 border-b border-border/50 border-r border-r-row-divider bg-background"
                   >
                     <span className="sr-only">Metric</span>
                   </th>
@@ -471,14 +471,16 @@ export default function ComparePage() {
                               >
                                 {fullName}
                               </a>
-                              <div className="mt-0.5 flex items-center gap-2 text-2xs font-normal text-muted-foreground">
-                                {item.repo.language && <span>{item.repo.language}</span>}
+                              <div className="mt-0.5 flex min-w-0 items-center gap-2 whitespace-nowrap text-2xs font-normal text-muted-foreground">
+                                {item.repo.language && (
+                                  <span className="truncate">{item.repo.language}</span>
+                                )}
                                 {item.repo.is_archived && (
-                                  <span className="text-destructive">Archived</span>
+                                  <span className="shrink-0 text-destructive">Archived</span>
                                 )}
                                 {isBest && (
-                                  <span className="inline-flex items-center gap-1 font-medium text-success">
-                                    <Icon icon="ri:award-line" className="h-3 w-3" />
+                                  <span className="inline-flex shrink-0 items-center gap-1 font-medium text-success">
+                                    <Icon icon="ri:award-line" className="h-3 w-3 shrink-0" />
                                     Best overall
                                   </span>
                                 )}
@@ -518,7 +520,7 @@ export default function ComparePage() {
                     <th
                       scope="row"
                       className={cn(
-                        'sticky left-0 z-10 bg-background px-4 py-2.5 text-left text-xs font-medium text-muted-foreground',
+                        'sticky left-0 z-10 border-r border-r-row-divider bg-background px-4 py-2.5 text-left text-xs font-medium text-muted-foreground',
                         rowIndex < metricRows.length - 1 && 'border-b border-b-row-divider',
                       )}
                     >

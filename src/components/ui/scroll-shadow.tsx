@@ -2,10 +2,7 @@
 
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react'
-import {
-  BackToTopButton,
-  BACK_TO_TOP_REVEAL_OFFSET,
-} from '@/components/ui/back-to-top-button'
+import { BackToTopButton, BACK_TO_TOP_REVEAL_OFFSET } from '@/components/ui/back-to-top-button'
 import { MOTION_DURATION_SECONDS, MOTION_EASING } from '@/config/motion'
 import { cn } from '@/utils/cn'
 

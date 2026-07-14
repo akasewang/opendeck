@@ -2,6 +2,7 @@
 
 import * as SelectPrimitive from '@radix-ui/react-select'
 import { type ComponentPropsWithoutRef, type ComponentRef, forwardRef } from 'react'
+import { fieldVariants } from '@/components/ui/field'
 import { Check, ChevronDown } from '@/components/ui/icons'
 import { cn } from '@/utils/cn'
 
@@ -15,9 +16,11 @@ const SelectTrigger = forwardRef<
   <SelectPrimitive.Trigger
     ref={ref}
     {...props}
-    className={cn(
-      'group flex h-9 w-full items-center justify-between gap-2 rounded-md border border-border/50 bg-background px-3 py-2 text-sm text-foreground outline-none transition-[border-color,box-shadow] duration-300 ease-out focus:ring-[0.5px] focus:ring-ring/30 disabled:pointer-events-none disabled:opacity-50 hover:border-border/80 data-[state=open]:border-border/80 [&>span]:line-clamp-1',
-      className,
+    className={fieldVariants(
+      cn(
+        'group flex h-9 items-center justify-between gap-2 px-3 py-2 data-[state=open]:border-border [&>span]:line-clamp-1',
+        className,
+      ),
     )}
   >
     {children}
