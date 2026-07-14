@@ -3,6 +3,7 @@ import './globals.css'
 import ScrollEndShake from '@/components/effects/scroll-end-shake'
 import { MotionProvider } from '@/components/providers/motion-provider'
 import CurtainProvider from '@/components/transitions/page-curtain'
+import { Toaster } from '@/components/ui/toast'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { APP_CONFIG } from '@/config/application'
 import { badeenDisplay, geistMono, geistSans } from '@/config/fonts'
@@ -92,6 +93,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <CurtainProvider>{children}</CurtainProvider>
             </AuthProvider>
           </TooltipProvider>
+          <Toaster />
         </MotionProvider>
         <ScrollEndShake />
       </body>

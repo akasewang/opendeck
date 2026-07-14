@@ -16,25 +16,28 @@ import {
   MOTION_SPRING,
 } from '@/config/motion'
 import { useAuth } from '@/features/auth/providers/auth-provider'
-import {
-  SIDENAV_AUTH_ICON_CELL_WIDTH,
-  SIDENAV_AUTH_LABEL_WIDTH,
-  SIDENAV_BRAND_FIRST_TILE_WIDTH,
-  SIDENAV_BRAND_FULL_WIDTH,
-  SIDENAV_BRAND_SIDE_OFFSET,
-  SIDENAV_BRAND_TRAILING_OVERLAP,
-  SIDENAV_BRAND_TRAILING_WIDTH,
-  SIDENAV_RAIL_EXPANDED_WIDTH,
-  SIDENAV_RAIL_ICON_CELL_WIDTH,
-  SIDENAV_RAIL_LABEL_WIDTH,
-  SIDENAV_RAIL_SIDE_OFFSET,
-  SIDENAV_RAIL_WIDTH,
-} from '@/features/dashboard/constants/sidenav-layout'
 import { DASHBOARD_NAV_GROUPS } from '@/features/dashboard/data/dashboard-navigation'
 import { cn } from '@/utils/cn'
 
 type NavVariant = 'rail' | 'mobile'
 
+const SIDENAV_RAIL_WIDTH = 56
+const SIDENAV_RAIL_GUTTER_WIDTH = 104
+const SIDENAV_RAIL_EXPANDED_WIDTH = 256
+const SIDENAV_BRAND_FIRST_TILE_WIDTH = 26
+const SIDENAV_BRAND_FULL_WIDTH = 194
+const SIDENAV_BRAND_TRAILING_WIDTH = SIDENAV_BRAND_FULL_WIDTH - SIDENAV_BRAND_FIRST_TILE_WIDTH
+const SIDENAV_BRAND_TRAILING_OVERLAP = 2
+const SIDENAV_RAIL_CONTENT_INSET = 10
+const SIDENAV_AUTH_CONTROL_INSET = 8
+const SIDENAV_RAIL_SIDE_OFFSET = (SIDENAV_RAIL_GUTTER_WIDTH - SIDENAV_RAIL_WIDTH) / 2
+const SIDENAV_BRAND_SIDE_OFFSET = (SIDENAV_RAIL_WIDTH - SIDENAV_BRAND_FIRST_TILE_WIDTH) / 2
+const SIDENAV_RAIL_ICON_CELL_WIDTH = SIDENAV_RAIL_WIDTH - SIDENAV_RAIL_CONTENT_INSET * 2
+const SIDENAV_RAIL_LABEL_WIDTH =
+  SIDENAV_RAIL_EXPANDED_WIDTH - SIDENAV_RAIL_CONTENT_INSET * 2 - SIDENAV_RAIL_ICON_CELL_WIDTH
+const SIDENAV_AUTH_ICON_CELL_WIDTH = SIDENAV_RAIL_WIDTH - SIDENAV_AUTH_CONTROL_INSET * 2
+const SIDENAV_AUTH_LABEL_WIDTH =
+  SIDENAV_RAIL_EXPANDED_WIDTH - SIDENAV_AUTH_CONTROL_INSET * 2 - SIDENAV_AUTH_ICON_CELL_WIDTH
 const SIDENAV_RAIL_TRANSITION = MOTION_SPRING.rail
 
 function RailLabel({
@@ -143,7 +146,7 @@ function SidebarNavigation({
                         {isActive && (
                           <motion.div
                             layoutId={`nav-active-tile-${variant}`}
-                            className="absolute inset-0 z-0 rounded-md border border-border/50 bg-background/70 shadow-active-navigation"
+                            className="absolute inset-0 z-0 rounded-md border border-border/50 bg-background/70 shadow-[0_1px_3px_oklch(0%_0_0_/_0.25)]"
                             transition={SIDENAV_RAIL_TRANSITION}
                           />
                         )}

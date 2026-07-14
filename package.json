@@ -8,6 +8,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "test": "tsx --test \"src/**/*.test.ts\"",
     "lint": "eslint . && biome lint --error-on-warnings .",
     "typecheck": "tsc --noEmit",
     "format": "biome format --write .",

@@ -12,19 +12,17 @@ It contains only residual work, deployment prerequisites, verification gaps, and
 | P1 | Complete rendered UI and accessibility verification | Source-level repairs are in place, but no browser backend was available for viewport, zoom, keyboard, reduced-motion, or automated accessibility checks. |
 | P1 | Rotate and verify the production cron credential | Source now rejects configured values shorter than 32 characters, but the deployed application and scheduler must share a newly generated value and rotation was not independently verified. |
 | P1 | Establish production observability and readiness policy | The repository has diagnostic logs but no production error reporter, metrics, traces, request identifiers, or host-specific health/readiness contract. |
-| P1 | Decide whether admin audits must be atomic | A successful admin mutation can still be committed when its audit-log insert fails. |
-| P1 | Define handling for repositories with more than 500 open issues | Their issue mirror remains intentionally partial, although unseen issues are no longer incorrectly closed. |
 | P2 | Establish trusted client-IP provenance | Distributed rate limiting still relies on forwarding headers supplied by the deployment proxy. |
-| P2 | Add database `CHECK` constraints after deployed-data validation | Several state columns are validated by the application but remain unconstrained text in PostgreSQL. |
-| P2 | Establish an automated test framework | The repository has executable validation commands but no persistent unit/integration test runner. |
+| P2 | Apply generated database migrations | The configured database is verified through `0013`; migrations `0014` and `0015` remain pending. |
+| P2 | Expand automated integration coverage | Focused unit regressions now run persistently, but database concurrency and rendered browser workflows still lack automated integration coverage. |
 | P2 | Define retention and historical-token cleanup | New magic links do not store raw invite credentials, but expired legacy metadata, backups, provider logs, and deletion propagation need a documented lifecycle. |
 | P2 | Confirm public-asset provenance | Font licenses are now documented, but repository-visible provenance for the public icon and social-preview image is still unclear. |
 
 ## Deployment prerequisites
 
-### Verify the applied additive database migrations
+### Verify and apply the database migrations
 
-Status: **reported as applied by the repository owner; not independently verified by the audit**.
+Status: **migrations `0011` through `0013` independently verified; generated migrations `0014` and `0015` pending application**.
 
 The following generated migrations exist in the working tree:
 
@@ -36,6 +34,13 @@ The following generated migrations exist in the working tree:
 - `drizzle/0013_productive_tana_nile.sql`
   - Creates `rate_limit_buckets`.
   - Adds its expiration index.
+- `drizzle/0014_mighty_captain_midlands.sql`
+  - Adds validated finite-state and numeric-range `CHECK` constraints.
+  - Contains no data updates, drops, renames, or table rewrites.
+- `drizzle/0015_real_the_hand.sql`
+  - Adds the issue-sync continuation page and full-cycle start timestamp.
+  - Adds an index for selecting the oldest incomplete issue mirrors.
+  - Contains only additive columns, an index, and a positive-page `CHECK` constraint.
 
 The runtime impact before migration was:
 
@@ -43,11 +48,14 @@ The runtime impact before migration was:
 - Magic-link rate limiting cannot update shared rate-limit buckets.
 - Empty repository-issue synchronizations cannot persist their refresh state.
 - Email delivery cannot persist stable idempotency keys.
+- Issue mirrors larger than one bounded batch cannot continue beyond their first 500 GitHub records without migration `0015`.
+
+Read-only verification against the configured database confirmed that `0011`, `0012`, and `0013` are recorded; the lease, synchronization, and rate-limit tables exist; the idempotency column and indexes exist; the legacy verification column is absent; and current finite-state values fit the application sets.
 
 Required follow-up:
 
-1. Confirm the migration journal records both migrations in every target environment.
-2. Verify the new tables, column, foreign key, and indexes.
+1. Review and apply migrations `0014` and `0015` in order in every target environment.
+2. Verify their constraints, columns, and incomplete-sync index after deployment.
 3. Exercise the authenticated and scheduled workflows listed below.
 
 ### Rotate and verify the production cron credential
@@ -137,7 +145,7 @@ Required follow-up:
 
 Status: **statically verified but not database-integration tested**.
 
-The audit implemented an atomic magic-link completion statement covering token locking, invite locking, user upsert, account defaults, session creation, invite acceptance, and token consumption. Repository ingestion and snapshot writes also share a Neon batch.
+The audit implemented an atomic magic-link completion statement covering token locking, invite locking, user upsert, account defaults, session creation, invite acceptance, and token consumption. Repository ingestion and snapshot writes share a Neon batch. Administrative user changes, deletions, invitations, and allowlist mutations now also commit their audit record in the same statement or transactional batch.
 
 Why it remains unresolved:
 
@@ -150,50 +158,8 @@ Required follow-up:
 - Test two concurrent requests using the same magic-link token; exactly one must create a session.
 - Force a statement failure and confirm that the token, invite, user defaults, and session all roll back.
 - Force a metric-snapshot failure and confirm that its repository write rolls back in the same batch.
+- Force every supported admin audit insert to fail and confirm that its associated admin mutation rolls back.
 - Run two copies of each leased job and confirm that only one performs the work.
-
-### Admin audit logging remains best-effort
-
-Status: **requires an explicit failure-semantics decision**.
-
-Admin actions currently log an error if the primary mutation succeeds but the `admin_audit_logs` insert fails. The successful mutation is not rolled back.
-
-Impact:
-
-- An administrative change can exist without a corresponding audit entry during a database error affecting the audit write.
-
-Why it was not changed automatically:
-
-- Making the audit insert atomic would cause audit-storage failures to reject user suspension, role changes, deletions, invitations, and allowlist changes.
-- That availability-versus-auditability behavior is a product and operational policy decision, not merely an implementation detail.
-
-Required follow-up:
-
-- Choose one policy:
-  - **Strict audit:** execute every admin mutation and audit insert in one transaction and reject the mutation if the audit cannot be stored.
-  - **Durable outbox:** commit the mutation with a guaranteed outbox event, then materialize the human-readable audit record asynchronously.
-- Add concurrency and failure tests for the selected policy.
-
-### Repositories with more than 500 open issues remain partially mirrored
-
-Status: **safe but incomplete**.
-
-Issue synchronization reads at most five GitHub pages of 100 issues each. When that limit is reached, `repository_sync_states.issues_complete` is stored as `false`.
-
-Current safeguards:
-
-- Existing issues that were not present in the partial response are not marked closed.
-- The refresh time is persisted, including when GitHub returns zero issues.
-- A per-repository database lease prevents duplicate concurrent refreshes.
-
-Remaining impact:
-
-- Issues after the first 500 are unavailable to recommendations and account views.
-
-Required follow-up:
-
-- Decide whether to paginate until exhaustion, synchronize incrementally in a background job, or explicitly support a documented mirror limit.
-- Consider GitHub rate-limit cost and job-duration limits before removing the cap.
 
 ### Forwarded client IPs require a trusted proxy
 
@@ -211,27 +177,19 @@ Required follow-up:
 - Prefer a platform-specific verified client-IP header when the deployment platform is finalized.
 - Add an integration test at the deployed edge, not only inside Next.js.
 
-### Database state columns lack complete `CHECK` constraints
+### Database `CHECK` constraints await deployment
 
-Status: **application-validated, database-hardening pending**.
+Status: **deployed values validated; source and generated migration fixed; migration `0014` pending**.
 
-Several fields use PostgreSQL `text` while the application treats them as finite states, including user roles/statuses, digest frequency, theme, setup difficulty, collection visibility, pipeline stage, follow target type, issue state, and journal status.
+A read-only query confirmed that current persisted finite-state values fit the application sets. The schema now defines constraints for user and invite roles, account status, allowlist kind, preference options and ranges, collection visibility, pipeline stage, follow and recent-view target type, issue state, and email-delivery state. Drizzle generated `0014_mighty_captain_midlands.sql` from that schema.
 
-Impact:
-
-- Direct SQL, an older deployment, or a future code defect could store values outside the runtime unions.
-
-Why it remains unresolved:
-
-- Existing deployed data was not accessible for validation.
-- Adding validated constraints without first checking existing rows can fail deployment.
+Journal status remains intentionally unconstrained because the current feature accepts user-defined status text rather than a finite application enum.
 
 Required follow-up:
 
-1. Query each affected column for values outside the current application sets.
-2. Repair invalid rows if any exist.
-3. Add additive `CHECK` constraints, initially `NOT VALID` where deployment safety requires it.
-4. Validate the constraints after data cleanup.
+1. Apply migration `0014` through the existing migration command.
+2. Verify every new constraint is present and validated in the target database.
+3. Repeat the finite-state query before applying the same migration to any other environment.
 
 ### Email guarantees depend on stable event keys and provider behavior
 
@@ -301,22 +259,21 @@ Required follow-up:
 
 ## Testing and operational verification gaps
 
-### No established automated test framework
+### Automated regression coverage is partial
 
-Status: **not introduced during the audits**.
+Status: **focused unit runner added; integration coverage remains open**.
 
-The repository has no existing unit or integration test command. The audits used strict TypeScript, ESLint, Biome, Drizzle migration checks, production builds, focused executable assertions, and non-mutating production-server route checks.
+The repository now runs persistent TypeScript tests through Node's test runner and the existing `tsx` dependency. CI executes them through `npm test`. Initial coverage protects authentication error mapping, trust-boundary input normalization, issue-sync cursor progression, unsafe Markdown protocol removal, and README URL resolution.
 
-Impact:
+Remaining impact:
 
-- Concurrency and rollback regressions are not protected by persistent tests.
-- Client mutation and stale-response behavior is validated statically rather than through repeatable browser tests.
+- Concurrency and rollback regressions are not protected without a disposable PostgreSQL test target.
+- Client mutation, focus, responsive, hydration and stale-response behavior still require a browser backend.
 
 Required follow-up:
 
-- Select a test runner compatible with Next.js and TypeScript.
 - Add PostgreSQL-backed integration tests for authentication, admin invariants, job leases, rate limits, issue synchronization, email idempotency, and atomic ingestion.
-- Add browser tests for account forms, duplicate-submission prevention, stale response handling, optimistic rollback, unauthorized states, and retry paths.
+- Add browser tests for account forms, duplicate-submission prevention, stale response handling, optimistic rollback, unauthorized states, and retry paths once a browser runner is selected.
 
 ### Rendered UI and accessibility matrix was not executable
 
@@ -421,10 +378,8 @@ This document can be removed when all of the following are true:
 - Migrations `0012` and `0013` are applied and verified in every target environment.
 - The production cron credential is generated, atomically deployed to the scheduler and application, and its rotation path is tested.
 - Transactional authentication, ingestion, leases, and rate limits have PostgreSQL integration coverage.
-- Admin audit failure semantics are selected and implemented.
-- The issue-mirroring policy for repositories above 500 open issues is implemented or explicitly accepted as a supported limit.
 - Trusted proxy IP handling is verified in deployment.
-- Database state constraints are added after data validation.
+- Migrations `0014` and `0015` are applied and their constraints, columns, and indexes are verified.
 - Stable idempotency keys are required for all retryable email types.
 - Historical authentication-token retention and cleanup are documented and exercised.
 - Production observability, liveness/readiness, alerting, and incident ownership are established.

@@ -1,18 +1,24 @@
-import { eq } from 'drizzle-orm'
+import { and, asc, eq, lt } from 'drizzle-orm'
 import { db } from '@/db/client'
-import { repoIssues, repositorySyncStates } from '@/db/schema'
+import { repoIssues, repos, repositorySyncStates } from '@/db/schema'
+import { safeErrorContext } from '@/lib/api/errors'
 import { isRecord, parseNullableDate } from '@/lib/api/input-normalization'
 import { githubFetchJson } from '@/lib/github/client'
 import { withJobLease } from '@/lib/jobs/job-lease-service'
 
 const REPOSITORY_ISSUE_SYNC_TTL_MS = 15 * 60 * 1000
 const REPOSITORY_ISSUE_LEASE_MS = 2 * 60 * 1000
+const GITHUB_ISSUE_PAGE_SIZE = 100
+const ISSUE_PAGES_PER_BATCH = 5
+const ISSUE_PAGE_OVERLAP = 1
+const DEFAULT_BACKGROUND_REPOSITORY_LIMIT = 2
+const MAX_BACKGROUND_REPOSITORY_LIMIT = 10
 
 type GithubIssue = {
   id: number
   number: number
   title: string
-  state: string
+  state: 'open' | 'closed'
   html_url: string
   comments?: number
   user?: { login?: string }
@@ -31,7 +37,7 @@ function parseGithubIssue(value: unknown): GithubIssue | null {
     typeof value.number !== 'number' ||
     !Number.isSafeInteger(value.number) ||
     typeof value.title !== 'string' ||
-    typeof value.state !== 'string' ||
+    (value.state !== 'open' && value.state !== 'closed') ||
     typeof value.html_url !== 'string' ||
     !value.html_url.startsWith('https://github.com/')
   ) {
@@ -68,6 +74,17 @@ function parseGithubIssue(value: unknown): GithubIssue | null {
       typeof value.closed_at === 'string' || value.closed_at === null ? value.closed_at : undefined,
     pull_request: value.pull_request,
   }
+}
+
+export function nextRepositoryIssueSyncPage(
+  startPage: number,
+  pagesFetched: number,
+  complete: boolean,
+) {
+  if (complete) return 1
+  if (!Number.isSafeInteger(startPage) || startPage < 1) return 1
+  if (!Number.isSafeInteger(pagesFetched) || pagesFetched < 1) return startPage
+  return Math.max(startPage + pagesFetched - ISSUE_PAGE_OVERLAP, 1)
 }
 
 export function mapRepositoryIssue(row: typeof repoIssues.$inferSelect, fullName?: string) {
@@ -107,28 +124,49 @@ function issueLabels(labels: GithubIssue['labels']) {
     .filter((label): label is string => Boolean(label))
 }
 
-async function performRepositoryIssueSync(repoId: string, fullName: string) {
-  const [recentlySynced] = await db
-    .select({ issuesFetchedAt: repositorySyncStates.issuesFetchedAt })
+type RepositoryIssueSyncResult = {
+  issues: GithubIssue[]
+  advanced: boolean
+  complete: boolean
+}
+
+async function performRepositoryIssueSync(
+  repoId: string,
+  fullName: string,
+): Promise<RepositoryIssueSyncResult> {
+  const [syncState] = await db
+    .select({
+      issuesFetchedAt: repositorySyncStates.issuesFetchedAt,
+      issuesComplete: repositorySyncStates.issuesComplete,
+      issuesNextPage: repositorySyncStates.issuesNextPage,
+      issuesSyncStartedAt: repositorySyncStates.issuesSyncStartedAt,
+    })
     .from(repositorySyncStates)
     .where(eq(repositorySyncStates.repoId, repoId))
     .limit(1)
   if (
-    recentlySynced &&
-    Date.now() - recentlySynced.issuesFetchedAt.getTime() < REPOSITORY_ISSUE_SYNC_TTL_MS
+    syncState?.issuesComplete &&
+    Date.now() - syncState.issuesFetchedAt.getTime() < REPOSITORY_ISSUE_SYNC_TTL_MS
   ) {
-    return []
+    return { issues: [], advanced: false, complete: true }
   }
 
+  const continuing = syncState?.issuesComplete === false && syncState.issuesSyncStartedAt !== null
+  const startPage = continuing ? Math.max(syncState.issuesNextPage, 1) : 1
+  const syncStartedAt =
+    continuing && syncState.issuesSyncStartedAt ? syncState.issuesSyncStartedAt : new Date()
   const data: GithubIssue[] = []
   let completeOpenIssueList = false
+  let pagesFetched = 0
   try {
-    for (let page = 1; page <= 5; page += 1) {
+    for (let offset = 0; offset < ISSUE_PAGES_PER_BATCH; offset += 1) {
+      const page = startPage + offset
       const result = await githubFetchJson(
-        `/repos/${fullName}/issues?state=open&per_page=100&sort=updated&direction=desc&page=${page}`,
+        `/repos/${fullName}/issues?state=open&per_page=${GITHUB_ISSUE_PAGE_SIZE}&sort=created&direction=asc&page=${page}`,
         { retries: 0, timeoutMs: 5_000 },
       )
       if (!Array.isArray(result.data)) throw new Error('GitHub returned an invalid issue list.')
+      pagesFetched += 1
 
       const pageIssues: GithubIssue[] = []
       for (const value of result.data) {
@@ -138,17 +176,18 @@ async function performRepositoryIssueSync(repoId: string, fullName: string) {
         pageIssues.push(issue)
       }
       data.push(...pageIssues)
-      if (result.data.length < 100) {
+      if (result.data.length < GITHUB_ISSUE_PAGE_SIZE) {
         completeOpenIssueList = true
         break
       }
     }
   } catch (error) {
-    console.error('GitHub issue synchronization failed', error)
-    return []
+    console.error('GitHub issue synchronization failed', safeErrorContext(error))
+    return { issues: [], advanced: false, complete: false }
   }
 
   const now = new Date()
+  const nextPage = nextRepositoryIssueSyncPage(startPage, pagesFetched, completeOpenIssueList)
   const issueWrites = data.map((issue) =>
     db
       .insert(repoIssues)
@@ -165,7 +204,7 @@ async function performRepositoryIssueSync(repoId: string, fullName: string) {
         createdAt: parseNullableDate(issue.created_at),
         updatedAt: parseNullableDate(issue.updated_at),
         closedAt: parseNullableDate(issue.closed_at),
-        lastFetchedAt: now,
+        lastFetchedAt: syncStartedAt,
       })
       .onConflictDoUpdate({
         target: [repoIssues.repoId, repoIssues.number],
@@ -178,7 +217,7 @@ async function performRepositoryIssueSync(repoId: string, fullName: string) {
           author: issue.user?.login ?? null,
           updatedAt: parseNullableDate(issue.updated_at),
           closedAt: parseNullableDate(issue.closed_at),
-          lastFetchedAt: now,
+          lastFetchedAt: syncStartedAt,
         },
       }),
   )
@@ -188,6 +227,8 @@ async function performRepositoryIssueSync(repoId: string, fullName: string) {
       repoId,
       issuesFetchedAt: now,
       issuesComplete: completeOpenIssueList,
+      issuesNextPage: nextPage,
+      issuesSyncStartedAt: completeOpenIssueList ? null : syncStartedAt,
       updatedAt: now,
     })
     .onConflictDoUpdate({
@@ -195,30 +236,78 @@ async function performRepositoryIssueSync(repoId: string, fullName: string) {
       set: {
         issuesFetchedAt: now,
         issuesComplete: completeOpenIssueList,
+        issuesNextPage: nextPage,
+        issuesSyncStartedAt: completeOpenIssueList ? null : syncStartedAt,
         updatedAt: now,
       },
     })
   const writes = completeOpenIssueList
     ? [
+        ...issueWrites,
         db
           .update(repoIssues)
-          .set({ state: 'closed', lastFetchedAt: now })
-          .where(eq(repoIssues.repoId, repoId)),
-        ...issueWrites,
+          .set({ state: 'closed' })
+          .where(
+            and(
+              eq(repoIssues.repoId, repoId),
+              eq(repoIssues.state, 'open'),
+              lt(repoIssues.lastFetchedAt, syncStartedAt),
+            ),
+          ),
         syncStateWrite,
       ]
     : [...issueWrites, syncStateWrite]
   const [firstWrite, ...remainingWrites] = writes
   await db.batch([firstWrite, ...remainingWrites])
 
-  return data
+  return { issues: data, advanced: true, complete: completeOpenIssueList }
+}
+
+async function runRepositoryIssueSync(repoId: string, fullName: string) {
+  return withJobLease(`repository-issues:${repoId}`, REPOSITORY_ISSUE_LEASE_MS, () =>
+    performRepositoryIssueSync(repoId, fullName),
+  )
 }
 
 export async function syncRepositoryIssues(repoId: string, fullName: string) {
-  const execution = await withJobLease(
-    `repository-issues:${repoId}`,
-    REPOSITORY_ISSUE_LEASE_MS,
-    () => performRepositoryIssueSync(repoId, fullName),
+  const execution = await runRepositoryIssueSync(repoId, fullName)
+  return execution.acquired ? execution.value.issues : []
+}
+
+export async function continueIncompleteRepositoryIssueSyncs(
+  limit = DEFAULT_BACKGROUND_REPOSITORY_LIMIT,
+) {
+  const boundedLimit = Math.min(
+    Math.max(Number.isSafeInteger(limit) ? limit : DEFAULT_BACKGROUND_REPOSITORY_LIMIT, 1),
+    MAX_BACKGROUND_REPOSITORY_LIMIT,
   )
-  return execution.acquired ? execution.value : []
+  const pending = await db
+    .select({ repoId: repositorySyncStates.repoId, fullName: repos.fullName })
+    .from(repositorySyncStates)
+    .innerJoin(repos, eq(repos.id, repositorySyncStates.repoId))
+    .where(eq(repositorySyncStates.issuesComplete, false))
+    .orderBy(asc(repositorySyncStates.updatedAt))
+    .limit(boundedLimit)
+
+  let advanced = 0
+  let completed = 0
+  let failed = 0
+  let alreadyRunning = 0
+  for (const repository of pending) {
+    try {
+      const execution = await runRepositoryIssueSync(repository.repoId, repository.fullName)
+      if (!execution.acquired) {
+        alreadyRunning += 1
+        continue
+      }
+      if (execution.value.advanced) advanced += 1
+      else if (!execution.value.complete) failed += 1
+      if (execution.value.complete) completed += 1
+    } catch (error) {
+      failed += 1
+      console.error('Background repository issue synchronization failed', safeErrorContext(error))
+    }
+  }
+
+  return { attempted: pending.length, advanced, completed, failed, alreadyRunning }
 }

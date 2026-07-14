@@ -65,21 +65,3 @@ export async function listAdminIngestionDashboard() {
     })),
   }
 }
-
-export async function recordAdminAudit(
-  adminId: string,
-  action: string,
-  targetType: string,
-  targetId?: string | null,
-  metadata: Record<string, unknown> = {},
-) {
-  await db.insert(adminAuditLogs).values({
-    adminId,
-    action,
-    targetType,
-    targetId,
-    metadata,
-  })
-
-  return { ok: true }
-}

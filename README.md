@@ -45,7 +45,7 @@ RESEND_API_KEY=
 
 If an older local database already promoted the first registered user, run `npm run auth:sync-admins` to preview persisted role changes, then `npm run auth:sync-admins -- --apply` to align `auth_users.role` with `AUTH_ADMIN_EMAILS`.
 
-Authentication uses email magic links. Sign in opens as a modal from any page, so there is no dedicated sign in route. `EMAIL_FROM` and `RESEND_API_KEY` are required in production for login links, account digests and alerts.
+Authentication uses email magic links. Sign in opens as a modal from any page; `/auth` remains only as a compatibility redirect for older links. `EMAIL_FROM` and `RESEND_API_KEY` are required in production for login links, account digests and alerts.
 
 ## Commands
 
@@ -53,6 +53,7 @@ Authentication uses email magic links. Sign in opens as a modal from any page, s
 npm run dev
 npm run build
 npm run start
+npm test
 npm run lint
 npm run format
 npm run db:migrate
@@ -121,6 +122,7 @@ A contribution-ready repository must be public, active, licensed, have a primary
 - `/api/repos/document`
 - `/api/auth/magic-link`
 - `/api/auth/magic-link/callback`
+- `/api/auth/email-verification` (retired-link compatibility redirect)
 - `/api/auth/session`
 - `/api/auth/sign-out`
 - `/api/account/*`
@@ -168,9 +170,10 @@ Abuse prone public endpoints can still benefit from persistent rate limiting at 
 
 ## Testing and Verification
 
-The current repo uses linting, formatting, type checking and production build verification. There is no unit test runner configured.
+The repository uses Node's test runner through `tsx` for focused TypeScript regression tests, plus linting, formatting, type checking and production build verification.
 
 ```sh
+npm test
 npm run lint
 npx biome check .
 npx tsc --noEmit --incremental false

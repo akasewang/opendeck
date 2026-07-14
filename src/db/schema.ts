@@ -2,6 +2,7 @@ import { sql } from 'drizzle-orm'
 import {
   bigint,
   boolean,
+  check,
   index,
   integer,
   jsonb,
@@ -33,6 +34,8 @@ export const authUsers = pgTable(
     uniqueIndex('auth_users_email_idx').on(table.email),
     index('auth_users_role_idx').on(table.role),
     index('auth_users_status_idx').on(table.status),
+    check('auth_users_role_check', sql`${table.role} in ('user', 'admin')`),
+    check('auth_users_status_check', sql`${table.status} in ('active', 'suspended')`),
   ],
 )
 
@@ -98,6 +101,7 @@ export const authInvites = pgTable(
     uniqueIndex('auth_invites_token_hash_idx').on(table.tokenHash),
     index('auth_invites_email_idx').on(table.email),
     index('auth_invites_expires_idx').on(table.expiresAt),
+    check('auth_invites_role_check', sql`${table.role} in ('user', 'admin')`),
   ],
 )
 
@@ -111,7 +115,10 @@ export const authEmailAllowlist = pgTable(
     createdBy: uuid('created_by').references(() => authUsers.id, { onDelete: 'set null' }),
     createdAt: timestamp('created_at').defaultNow().notNull(),
   },
-  (table) => [uniqueIndex('auth_email_allowlist_pattern_idx').on(table.pattern)],
+  (table) => [
+    uniqueIndex('auth_email_allowlist_pattern_idx').on(table.pattern),
+    check('auth_email_allowlist_kind_check', sql`${table.kind} in ('email', 'domain')`),
+  ],
 )
 
 export const repos = pgTable(
@@ -220,36 +227,59 @@ export const repoMetricSnapshots = pgTable(
   (table) => [index('repo_metric_snapshots_repo_time_idx').on(table.repoId, table.capturedAt)],
 )
 
-export const userPreferences = pgTable('user_preferences', {
-  userId: uuid('user_id')
-    .primaryKey()
-    .references(() => authUsers.id, { onDelete: 'cascade' }),
-  defaultLanguage: text('default_language'),
-  defaultSort: text('default_sort').default('contribution').notNull(),
-  theme: text('theme').default('system').notNull(),
-  preferredLanguages: jsonb('preferred_languages')
-    .$type<string[]>()
-    .default(sql`'[]'::jsonb`)
-    .notNull(),
-  preferredTopics: jsonb('preferred_topics').$type<string[]>().default(sql`'[]'::jsonb`).notNull(),
-  minStars: integer('min_stars').default(0).notNull(),
-  includeLowIssueCount: boolean('include_low_issue_count').default(true).notNull(),
-  emailDigestEnabled: boolean('email_digest_enabled').default(false).notNull(),
-  digestFrequency: text('digest_frequency').default('weekly').notNull(),
-  digestDay: integer('digest_day').default(1).notNull(),
-  goodFirstAlertsEnabled: boolean('good_first_alerts_enabled').default(true).notNull(),
-  privateProfile: boolean('private_profile').default(true).notNull(),
-  excludedLanguages: jsonb('excluded_languages')
-    .$type<string[]>()
-    .default(sql`'[]'::jsonb`)
-    .notNull(),
-  excludedTopics: jsonb('excluded_topics').$type<string[]>().default(sql`'[]'::jsonb`).notNull(),
-  excludeArchived: boolean('exclude_archived').default(true).notNull(),
-  excludeResourceLists: boolean('exclude_resource_lists').default(true).notNull(),
-  excludeLowActivity: boolean('exclude_low_activity').default(false).notNull(),
-  setupDifficulty: text('setup_difficulty').default('any').notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
-})
+export const userPreferences = pgTable(
+  'user_preferences',
+  {
+    userId: uuid('user_id')
+      .primaryKey()
+      .references(() => authUsers.id, { onDelete: 'cascade' }),
+    defaultLanguage: text('default_language'),
+    defaultSort: text('default_sort').default('contribution').notNull(),
+    theme: text('theme').default('system').notNull(),
+    preferredLanguages: jsonb('preferred_languages')
+      .$type<string[]>()
+      .default(sql`'[]'::jsonb`)
+      .notNull(),
+    preferredTopics: jsonb('preferred_topics')
+      .$type<string[]>()
+      .default(sql`'[]'::jsonb`)
+      .notNull(),
+    minStars: integer('min_stars').default(0).notNull(),
+    includeLowIssueCount: boolean('include_low_issue_count').default(true).notNull(),
+    emailDigestEnabled: boolean('email_digest_enabled').default(false).notNull(),
+    digestFrequency: text('digest_frequency').default('weekly').notNull(),
+    digestDay: integer('digest_day').default(1).notNull(),
+    goodFirstAlertsEnabled: boolean('good_first_alerts_enabled').default(true).notNull(),
+    privateProfile: boolean('private_profile').default(true).notNull(),
+    excludedLanguages: jsonb('excluded_languages')
+      .$type<string[]>()
+      .default(sql`'[]'::jsonb`)
+      .notNull(),
+    excludedTopics: jsonb('excluded_topics').$type<string[]>().default(sql`'[]'::jsonb`).notNull(),
+    excludeArchived: boolean('exclude_archived').default(true).notNull(),
+    excludeResourceLists: boolean('exclude_resource_lists').default(true).notNull(),
+    excludeLowActivity: boolean('exclude_low_activity').default(false).notNull(),
+    setupDifficulty: text('setup_difficulty').default('any').notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => [
+    check(
+      'user_preferences_default_sort_check',
+      sql`${table.defaultSort} in ('relevance', 'stars', 'forks', 'recent', 'updated', 'contribution')`,
+    ),
+    check('user_preferences_theme_check', sql`${table.theme} in ('light', 'dark', 'system')`),
+    check(
+      'user_preferences_digest_frequency_check',
+      sql`${table.digestFrequency} in ('off', 'daily', 'weekly', 'monthly')`,
+    ),
+    check('user_preferences_digest_day_check', sql`${table.digestDay} between 0 and 6`),
+    check('user_preferences_min_stars_check', sql`${table.minStars} between 0 and 10000000`),
+    check(
+      'user_preferences_setup_difficulty_check',
+      sql`${table.setupDifficulty} in ('any', 'easy', 'medium', 'advanced')`,
+    ),
+  ],
+)
 
 export const userCollections = pgTable(
   'user_collections',
@@ -272,6 +302,7 @@ export const userCollections = pgTable(
     uniqueIndex('user_collections_share_slug_idx').on(table.shareSlug),
     index('user_collections_user_idx').on(table.userId),
     index('user_collections_visibility_idx').on(table.visibility),
+    check('user_collections_visibility_check', sql`${table.visibility} in ('private', 'shared')`),
   ],
 )
 
@@ -355,6 +386,10 @@ export const userRepoStates = pgTable(
     uniqueIndex('user_repo_states_user_repo_idx').on(table.userId, table.repoId),
     index('user_repo_states_user_saved_idx').on(table.userId, table.savedAt),
     index('user_repo_states_pipeline_idx').on(table.userId, table.pipelineStage),
+    check(
+      'user_repo_states_pipeline_stage_check',
+      sql`${table.pipelineStage} in ('interested', 'opened_issue', 'submitted_pr', 'done')`,
+    ),
   ],
 )
 
@@ -374,6 +409,7 @@ export const userFollows = pgTable(
   (table) => [
     uniqueIndex('user_follows_user_target_idx').on(table.userId, table.targetType, table.targetKey),
     index('user_follows_user_idx').on(table.userId),
+    check('user_follows_target_type_check', sql`${table.targetType} in ('repo', 'organization')`),
   ],
 )
 
@@ -400,6 +436,10 @@ export const userRecentViews = pgTable(
       table.targetKey,
     ),
     index('user_recent_views_user_time_idx').on(table.userId, table.viewedAt),
+    check(
+      'user_recent_views_target_type_check',
+      sql`${table.targetType} in ('repo', 'organization')`,
+    ),
   ],
 )
 
@@ -451,17 +491,27 @@ export const repoIssues = pgTable(
     uniqueIndex('repo_issues_github_id_idx').on(table.githubIssueId),
     index('repo_issues_repo_state_idx').on(table.repoId, table.state),
     index('repo_issues_updated_idx').on(table.updatedAt),
+    check('repo_issues_state_check', sql`${table.state} in ('open', 'closed')`),
   ],
 )
 
-export const repositorySyncStates = pgTable('repository_sync_states', {
-  repoId: uuid('repo_id')
-    .primaryKey()
-    .references(() => repos.id, { onDelete: 'cascade' }),
-  issuesFetchedAt: timestamp('issues_fetched_at').notNull(),
-  issuesComplete: boolean('issues_complete').default(false).notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
-})
+export const repositorySyncStates = pgTable(
+  'repository_sync_states',
+  {
+    repoId: uuid('repo_id')
+      .primaryKey()
+      .references(() => repos.id, { onDelete: 'cascade' }),
+    issuesFetchedAt: timestamp('issues_fetched_at').notNull(),
+    issuesComplete: boolean('issues_complete').default(false).notNull(),
+    issuesNextPage: integer('issues_next_page').default(1).notNull(),
+    issuesSyncStartedAt: timestamp('issues_sync_started_at'),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => [
+    index('repository_sync_states_incomplete_idx').on(table.issuesComplete, table.updatedAt),
+    check('repository_sync_states_next_page_check', sql`${table.issuesNextPage} >= 1`),
+  ],
+)
 
 export const userRepoJournalEntries = pgTable(
   'user_repo_journal_entries',
@@ -509,6 +559,10 @@ export const emailDeliveries = pgTable(
     index('email_deliveries_user_idx').on(table.userId),
     index('email_deliveries_status_idx').on(table.status),
     index('email_deliveries_type_idx').on(table.type),
+    check(
+      'email_deliveries_status_check',
+      sql`${table.status} in ('queued', 'sent', 'skipped', 'failed')`,
+    ),
   ],
 )
 

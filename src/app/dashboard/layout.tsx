@@ -1,5 +1,4 @@
 import type { Metadata } from 'next'
-import { Toaster } from '@/components/ui/toast'
 import { APP_CONFIG } from '@/config/application'
 import DashboardScroll from '@/features/dashboard/components/dashboard-scroll'
 import Sidenav from '@/features/dashboard/components/sidenav'
@@ -27,7 +26,6 @@ export default async function Layout({ children }: { children: React.ReactNode }
           <DashboardScroll>{children}</DashboardScroll>
         </main>
       </div>
-      <Toaster />
     </div>
   )
 }

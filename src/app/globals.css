@@ -103,19 +103,9 @@
   --shadow-2xl: var(--shadow-2xl);
   --shadow-inner: var(--shadow-inner);
   --shadow-inner-sm: var(--shadow-inner-sm);
-  --shadow-interactive: 0 2px 14px oklch(0% 0 0 / 0.35);
   --shadow-table-header: 0 10px 14px -10px oklch(0% 0 0 / 0.75);
   --shadow-floating: 0 14px 45px oklch(0% 0 0 / 0.28);
   --shadow-floating-hover: 0 18px 60px oklch(0% 0 0 / 0.36);
-  --shadow-popover: 0 10px 30px oklch(0% 0 0 / 0.32);
-  --shadow-popover-hover: 0 14px 40px oklch(0% 0 0 / 0.4);
-  --shadow-active-navigation: 0 1px 3px oklch(0% 0 0 / 0.25);
-  --shadow-repository-tile: 0 0 0 1px oklch(0% 0 0 / 0.55),
-    0 10px 20px -6px oklch(0% 0 0 / 0.7), 0 3px 6px -3px oklch(0% 0 0 / 0.6);
-  --shadow-repository-tile-overlay: inset 0 1.5px 0 0 oklch(100% 0 0 / 0.45),
-    inset 0 -3px 6px -1px oklch(0% 0 0 / 0.55), inset 0 0 0 1px oklch(100% 0 0 / 0.12);
-  --shadow-kbd: 0 1.5px 0 oklch(0.2 0 0), inset 0 1px 0 oklch(100% 0 0 / 0.2),
-    inset 0 -1px 1px oklch(0% 0 0 / 0.4);
 
   --text-2xs: 0.6875rem;
   --text-2xs--line-height: 1rem;
@@ -141,6 +131,29 @@ html {
   :where(a, button, input, textarea, select, summary, [tabindex]:not([tabindex='-1'])):focus-visible {
     outline-color: Highlight !important;
   }
+}
+
+html,
+body,
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+::-webkit-scrollbar {
+  -webkit-appearance: none;
+  width: 0;
+  height: 0;
+  display: none;
+  background: transparent;
+}
+
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-track-piece,
+::-webkit-scrollbar-thumb,
+::-webkit-scrollbar-corner {
+  border: 0;
+  background: transparent;
 }
 
 .hide-scrollbar {

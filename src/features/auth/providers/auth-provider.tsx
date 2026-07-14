@@ -117,7 +117,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const parsed = readAuthParams()
     if (!parsed) return
-    if (parsed.errorCode) toast(authErrorMessage(parsed.errorCode), { tone: 'error' })
+    if (parsed.errorCode !== null) {
+      toast(authErrorMessage(parsed.errorCode), { tone: 'error' })
+      return
+    }
     setEntry(parsed.entry)
   }, [])
 

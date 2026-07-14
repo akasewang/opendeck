@@ -1,6 +1,13 @@
+import { randomUUID } from 'node:crypto'
 import { and, desc, eq, gt, isNull, sql } from 'drizzle-orm'
 import { db } from '@/db/client'
-import { authEmailAllowlist, authInvites, authSessions, authUsers } from '@/db/schema'
+import {
+  adminAuditLogs,
+  authEmailAllowlist,
+  authInvites,
+  authSessions,
+  authUsers,
+} from '@/db/schema'
 import {
   deleteUserPreservingActiveAdmin,
   updateUserAccessPreservingActiveAdmin,
@@ -22,6 +29,15 @@ import {
 
 function normalizeRole(value: unknown): AuthRole {
   return value === 'admin' ? 'admin' : 'user'
+}
+
+type SavedAllowlistRow = {
+  id: string
+  pattern: string
+  kind: string
+  note: string | null
+  createdBy: string | null
+  createdAt: Date | string
 }
 
 export async function listAdminUsers() {
@@ -63,7 +79,11 @@ export async function updateAdminUser(adminId: string, body: Record<string, unkn
     throw new Error('You cannot suspend your own account.')
   }
 
-  const updated = await updateUserAccessPreservingActiveAdmin(userId, role, status)
+  const updated = await updateUserAccessPreservingActiveAdmin(userId, role, status, {
+    adminId,
+    action: 'update_user',
+    metadata: { role, status },
+  })
 
   if (!updated) throw new Error('User not found.')
   return toPublicUser(updated)
@@ -74,7 +94,14 @@ export async function deleteUserAsAdmin(adminId: string, body: Record<string, un
   if (!userId) throw new Error('Missing user.')
   if (userId === adminId) throw new Error('You cannot delete your own account here.')
 
-  if (!(await deleteUserPreservingActiveAdmin(userId))) throw new Error('User not found.')
+  if (
+    !(await deleteUserPreservingActiveAdmin(userId, {
+      adminId,
+      action: 'delete_user',
+    }))
+  ) {
+    throw new Error('User not found.')
+  }
   return { ok: true, id: userId }
 }
 
@@ -87,22 +114,38 @@ export async function createInvite(adminId: string, body: Record<string, unknown
     throw new Error('Invalid invite role.')
   }
   const token = createOpaqueToken()
+  const inviteId = randomUUID()
+  const role = normalizeRole(body.role)
   const parsedDays = body.days === undefined ? 14 : parseIntegerValue(body.days)
   if (parsedDays === undefined || parsedDays < 1 || parsedDays > 365) {
     throw new Error('Invite duration must be between 1 and 365 days.')
   }
   const days = parsedDays
   const expiresAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000)
-  const [invite] = await db
+  const inviteWrite = db
     .insert(authInvites)
     .values({
+      id: inviteId,
       email,
       tokenHash: hashOpaqueToken(token),
-      role: normalizeRole(body.role),
+      role,
       invitedBy: adminId,
       expiresAt,
     })
     .returning()
+  const auditWrite = db.insert(adminAuditLogs).values({
+    adminId,
+    action: 'create_invite',
+    targetType: 'invite',
+    targetId: inviteId,
+    metadata: {
+      email,
+      role,
+      expiresAt: expiresAt.toISOString(),
+    },
+  })
+  const [invites] = await db.batch([inviteWrite, auditWrite])
+  const invite = invites[0]
 
   return {
     id: invite.id,
@@ -154,26 +197,67 @@ export async function saveAllowlistRule(adminId: string, body: Record<string, un
     throw new Error('Enter a valid allowlist domain.')
   }
 
-  const [row] = await db
-    .insert(authEmailAllowlist)
-    .values({
-      pattern,
-      kind,
-      note: cleanOptionalText(body.note, 300),
-      createdBy: adminId,
-    })
-    .onConflictDoUpdate({
-      target: authEmailAllowlist.pattern,
-      set: { kind, note: cleanOptionalText(body.note, 300), createdBy: adminId },
-    })
-    .returning()
+  const note = cleanOptionalText(body.note, 300)
+  const result = await db.execute<SavedAllowlistRow>(sql`
+    with saved_rule as (
+      insert into ${authEmailAllowlist} (pattern, kind, note, created_by)
+      values (${pattern}, ${kind}, ${note}, ${adminId}::uuid)
+      on conflict (pattern) do update
+      set kind = excluded.kind,
+          note = excluded.note,
+          created_by = excluded.created_by
+      returning
+        ${authEmailAllowlist.id} as id,
+        ${authEmailAllowlist.pattern} as pattern,
+        ${authEmailAllowlist.kind} as kind,
+        ${authEmailAllowlist.note} as note,
+        ${authEmailAllowlist.createdBy} as "createdBy",
+        ${authEmailAllowlist.createdAt} as "createdAt"
+    ),
+    audit_record as (
+      insert into ${adminAuditLogs} (admin_id, action, target_type, target_id, metadata)
+      select
+        ${adminId}::uuid,
+        'save_allowlist_rule',
+        'allowlist_rule',
+        id::text,
+        jsonb_build_object('pattern', pattern, 'kind', kind)
+      from saved_rule
+      returning ${adminAuditLogs.id}
+    )
+    select saved_rule.*
+    from saved_rule
+    cross join audit_record
+  `)
+  const row = result.rows[0]
+  if (!row) throw new Error('Unable to save the allowlist rule.')
 
-  return row
+  return {
+    ...row,
+    createdAt: row.createdAt instanceof Date ? row.createdAt : new Date(row.createdAt),
+  }
 }
 
-export async function deleteAllowlistRule(id: string) {
+export async function deleteAllowlistRule(adminId: string, id: string) {
   const ruleId = cleanUuid(id)
   if (!ruleId) throw new Error('A valid allowlist rule id is required.')
-  await db.delete(authEmailAllowlist).where(eq(authEmailAllowlist.id, ruleId))
+  await db.execute(sql`
+    with deleted_rule as (
+      delete from ${authEmailAllowlist}
+      where ${authEmailAllowlist.id} = ${ruleId}
+      returning ${authEmailAllowlist.id} as id
+    ),
+    audit_record as (
+      insert into ${adminAuditLogs} (admin_id, action, target_type, target_id, metadata)
+      select
+        ${adminId}::uuid,
+        'delete_allowlist_rule',
+        'allowlist_rule',
+        id::text,
+        '{}'::jsonb
+      from deleted_rule
+    )
+    select id from deleted_rule
+  `)
   return { ok: true }
 }

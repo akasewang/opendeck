@@ -5,14 +5,14 @@ import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState } f
 import { EmptyState } from '@/components/ui/empty-state'
 import { ErrorBanner } from '@/components/ui/error-banner'
 import { ScrollShadow } from '@/components/ui/scroll-shadow'
-import { useAuth } from '@/features/auth/providers/auth-provider'
 import {
   MOTION_DURATION_SECONDS,
   MOTION_EASING,
   MOTION_STAGGER_STEP_SECONDS,
 } from '@/config/motion'
-import { ExpandedDetails } from '@/features/repositories/components/repo-expanded-details'
+import { useAuth } from '@/features/auth/providers/auth-provider'
 import { prefetchPersonalRepoStates } from '@/features/repositories/api/personal-repo-cache'
+import { ExpandedDetails } from '@/features/repositories/components/repo-expanded-details'
 import { renderCell } from '@/features/repositories/components/table/repository-table-cells'
 import { TableHeadRow } from '@/features/repositories/components/table/repository-table-header'
 import {
@@ -20,19 +20,25 @@ import {
   RepoTableSkeleton,
 } from '@/features/repositories/components/table/repository-table-skeleton'
 import { TableToolbar } from '@/features/repositories/components/table/repository-table-toolbar'
-import {
-  REPOSITORY_TABLE_COLUMN_BOUNDS,
-  REPOSITORY_TABLE_COLUMNS,
-  REPOSITORY_TABLE_NAME_COLUMN_BOUNDS,
-} from '@/features/repositories/data/repository-table-columns'
+import { REPOSITORY_TABLE_COLUMNS } from '@/features/repositories/data/repository-table-columns'
 import type { RepositoryListItem } from '@/features/repositories/types/repository'
+import type { RepositoryTableColumnKey } from '@/features/repositories/types/repository-table'
 import { repoKey } from '@/features/repositories/utils/repository-table-url-state'
-import { cn } from '@/utils/cn'
 import { clearUrlParameter } from '@/lib/browser/url-state'
+import { cn } from '@/utils/cn'
 
 export { RepoTableSkeleton }
 
 const LOADING_MORE_SKELETON_COUNT = 5
+const NAME_COLUMN_BOUNDS =
+  'w-auto min-w-[11rem] max-w-[22rem] sm:min-w-[18rem] sm:max-w-[28rem] md:min-w-[20rem] md:max-w-[34rem] lg:min-w-[24rem] lg:max-w-[42rem] xl:max-w-[50rem] 2xl:max-w-[58rem]'
+const COLUMN_BOUNDS: Partial<Record<RepositoryTableColumnKey, string>> = {
+  language: 'min-w-[8rem]',
+  topics: 'min-w-[16rem]',
+  open_issues_count: 'min-w-[7.5rem]',
+  stargazers_count: 'min-w-[7rem]',
+  contribution_score: 'min-w-[10.75rem]',
+}
 
 export default function RepoTable({
   data,
@@ -310,11 +316,11 @@ export default function RepoTable({
                           {REPOSITORY_TABLE_COLUMNS.map(({ key }) => {
                             const className = cn(
                               'border-b border-b-row-divider px-3 py-3 text-sm align-middle sm:px-4',
-                              REPOSITORY_TABLE_COLUMN_BOUNDS[key],
+                              COLUMN_BOUNDS[key],
                               key !== 'topics' && key !== 'name' && 'whitespace-nowrap',
                               key === 'name' && [
                                 'sticky left-0 z-10 overflow-hidden border-r border-r-row-divider transition-colors group-hover:bg-row-hover',
-                                REPOSITORY_TABLE_NAME_COLUMN_BOUNDS,
+                                NAME_COLUMN_BOUNDS,
                                 isExpanded ? 'bg-row-hover' : 'bg-background',
                               ],
                             )

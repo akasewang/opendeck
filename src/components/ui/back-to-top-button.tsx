@@ -2,11 +2,7 @@
 
 import { motion, type Variants } from 'framer-motion'
 import { ArrowUp } from '@/components/ui/icons'
-import {
-  MOTION_DURATION_SECONDS,
-  MOTION_EASING,
-  MOTION_SPRING,
-} from '@/config/motion'
+import { MOTION_DURATION_SECONDS, MOTION_EASING, MOTION_SPRING } from '@/config/motion'
 import { cn } from '@/utils/cn'
 
 export const BACK_TO_TOP_REVEAL_OFFSET = 160
@@ -25,7 +21,8 @@ const ARROW_VARIANTS: Variants = {
 
 const SIZE_STYLES = {
   compact: {
-    button: 'h-9 w-9 rounded-md shadow-popover hover:shadow-popover-hover',
+    button:
+      'h-9 w-9 rounded-md shadow-[0_10px_30px_oklch(0%_0_0_/_0.32)] hover:shadow-[0_14px_40px_oklch(0%_0_0_/_0.4)]',
     icon: 18,
   },
   default: {
@@ -77,11 +74,7 @@ export function BackToTopButton({
           styles.button,
         )}
       >
-        <motion.span
-          variants={ARROW_VARIANTS}
-          transition={MOTION_SPRING.arrow}
-          className="flex"
-        >
+        <motion.span variants={ARROW_VARIANTS} transition={MOTION_SPRING.arrow} className="flex">
           <ArrowUp size={styles.icon} />
         </motion.span>
       </motion.button>

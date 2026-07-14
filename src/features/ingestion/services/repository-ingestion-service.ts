@@ -5,6 +5,8 @@ import {
   getContributionReadiness,
   shouldIngestContributionCandidate,
 } from '@/features/repositories/services/contribution-readiness'
+import { continueIncompleteRepositoryIssueSyncs } from '@/features/repositories/services/repository-issue-service'
+import { safeErrorContext } from '@/lib/api/errors'
 import { githubFetchJson, githubGraphql } from '@/lib/github/client'
 import { getGithubTokenSnapshot } from '@/lib/github/tokens'
 import { isRecord } from '@/lib/api/input-normalization'
@@ -601,6 +603,7 @@ export async function ingestTrending(limit = 50) {
   let skippedNew = 0
   let skippedIneligible = 0
   let rateLimitRemaining: number | null = null
+  let issueSync = { attempted: 0, advanced: 0, completed: 0, failed: 0, alreadyRunning: 0 }
 
   try {
     let corpusSize = await countRepositoryCorpus()
@@ -638,6 +641,13 @@ export async function ingestTrending(limit = 50) {
       ingested += 1
     }
 
+    try {
+      issueSync = await continueIncompleteRepositoryIssueSyncs()
+    } catch (error) {
+      issueSync.failed += 1
+      console.error('Unable to continue pending repository issue syncs', safeErrorContext(error))
+    }
+
     await finishIngestRun(runId, 'success', {
       ingested,
       updated,
@@ -645,6 +655,7 @@ export async function ingestTrending(limit = 50) {
       skippedNew,
       skippedIneligible,
       corpusTarget: DEFAULT_REPOSITORY_CORPUS_TARGET,
+      issueSync,
       rateLimitRemaining,
       githubToken: getGithubTokenSnapshot(),
     })
@@ -656,6 +667,7 @@ export async function ingestTrending(limit = 50) {
       skippedNew,
       skippedIneligible,
       corpusTarget: DEFAULT_REPOSITORY_CORPUS_TARGET,
+      issueSync,
     }
   } catch (error) {
     await finishIngestRun(
@@ -668,6 +680,7 @@ export async function ingestTrending(limit = 50) {
         skippedNew,
         skippedIneligible,
         corpusTarget: DEFAULT_REPOSITORY_CORPUS_TARGET,
+        issueSync,
         rateLimitRemaining,
         githubToken: getGithubTokenSnapshot(),
       },

@@ -9,10 +9,7 @@ import {
   saveAllowlistRule,
   updateAdminUser,
 } from '@/features/admin/services/admin-account-service'
-import {
-  listAdminIngestionDashboard,
-  recordAdminAudit,
-} from '@/features/admin/services/admin-dashboard-service'
+import { listAdminIngestionDashboard } from '@/features/admin/services/admin-dashboard-service'
 import { getUserFromRequest } from '@/features/auth/services/authentication-service'
 import { safeErrorContext } from '@/lib/api/errors'
 import { readJsonObject } from '@/lib/api/request-body'
@@ -62,17 +59,6 @@ async function resourcePath(context: RouteContext) {
   return (await context.params).resource ?? ['users']
 }
 
-async function recordAuditSafely(...args: Parameters<typeof recordAdminAudit>) {
-  try {
-    await recordAdminAudit(...args)
-  } catch (error) {
-    console.error(
-      'Admin action succeeded but its audit record could not be written',
-      safeErrorContext(error),
-    )
-  }
-}
-
 export async function GET(request: NextRequest, context: RouteContext) {
   const auth = await requireAdmin(request)
   if ('response' in auth) return auth.response
@@ -108,42 +94,27 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
     if (resource === 'users' && action === 'delete') {
       const result = await deleteUserAsAdmin(auth.user.id, body)
-      await recordAuditSafely(auth.user.id, 'delete_user', 'user', result.id)
       return NextResponse.json(result)
     }
 
     if (resource === 'users') {
       const user = await updateAdminUser(auth.user.id, body)
-      await recordAuditSafely(auth.user.id, 'update_user', 'user', user.id, {
-        role: user.role,
-        status: body.status === 'suspended' ? 'suspended' : 'active',
-      })
       return NextResponse.json({ user })
     }
 
     if (resource === 'invites') {
       const invite = await createInvite(auth.user.id, body)
-      await recordAuditSafely(auth.user.id, 'create_invite', 'invite', invite.id, {
-        email: invite.email,
-        role: invite.role,
-        expiresAt: invite.expiresAt,
-      })
       return NextResponse.json({ invite })
     }
 
     if (resource === 'allowlist' && action === 'delete') {
       const id = String(body.id ?? '')
-      const result = await deleteAllowlistRule(id)
-      await recordAuditSafely(auth.user.id, 'delete_allowlist_rule', 'allowlist_rule', id)
+      const result = await deleteAllowlistRule(auth.user.id, id)
       return NextResponse.json(result)
     }
 
     if (resource === 'allowlist') {
       const rule = await saveAllowlistRule(auth.user.id, body)
-      await recordAuditSafely(auth.user.id, 'save_allowlist_rule', 'allowlist_rule', rule.id, {
-        pattern: rule.pattern,
-        kind: rule.kind,
-      })
       return NextResponse.json({ rule })
     }
 

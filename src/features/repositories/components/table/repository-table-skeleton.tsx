@@ -1,12 +1,10 @@
 import { ScrollShadow } from '@/components/ui/scroll-shadow'
 import { Skeleton } from '@/components/ui/skeleton'
-import {
-  REPOSITORY_TABLE_COLUMN_BOUNDS,
-  REPOSITORY_TABLE_NAME_COLUMN_BOUNDS,
-} from '@/features/repositories/data/repository-table-columns'
 import { cn } from '@/utils/cn'
 import { TableHeadRow } from './repository-table-header'
 
+const NAME_COLUMN_BOUNDS =
+  'w-auto min-w-[11rem] max-w-[22rem] sm:min-w-[18rem] sm:max-w-[28rem] md:min-w-[20rem] md:max-w-[34rem] lg:min-w-[24rem] lg:max-w-[42rem] xl:max-w-[50rem] 2xl:max-w-[58rem]'
 const SKELETON_NAME_WIDTHS = ['w-36', 'w-52', 'w-28', 'w-44', 'w-60', 'w-32', 'w-48', 'w-40']
 const SKELETON_TOPIC_WIDTHS: Array<[string, string]> = [
   ['w-16', 'w-10'],
@@ -27,7 +25,7 @@ export function RepoRowSkeleton({ index = 0 }: { index?: number }) {
       <td
         className={cn(
           'sticky left-0 z-10 overflow-hidden border-b border-b-row-divider border-r border-r-row-divider bg-background px-3 py-3 sm:px-4',
-          REPOSITORY_TABLE_NAME_COLUMN_BOUNDS,
+          NAME_COLUMN_BOUNDS,
         )}
       >
         <div className="flex items-center gap-2.5">
@@ -38,7 +36,7 @@ export function RepoRowSkeleton({ index = 0 }: { index?: number }) {
       <td
         className={cn(
           'overflow-hidden border-b border-b-row-divider px-3 py-3 sm:px-4',
-          REPOSITORY_TABLE_COLUMN_BOUNDS.language,
+          'min-w-[8rem]',
         )}
       >
         <Skeleton className="h-5 w-16" />
@@ -46,7 +44,7 @@ export function RepoRowSkeleton({ index = 0 }: { index?: number }) {
       <td
         className={cn(
           'overflow-hidden border-b border-b-row-divider px-3 py-3 sm:px-4',
-          REPOSITORY_TABLE_COLUMN_BOUNDS.topics,
+          'min-w-[16rem]',
         )}
       >
         <div className="flex gap-1.5">
@@ -57,7 +55,7 @@ export function RepoRowSkeleton({ index = 0 }: { index?: number }) {
       <td
         className={cn(
           'overflow-hidden border-b border-b-row-divider px-3 py-3 sm:px-4',
-          REPOSITORY_TABLE_COLUMN_BOUNDS.open_issues_count,
+          'min-w-[7.5rem]',
         )}
       >
         <Skeleton className={cn('h-3.5', issuesWidth)} />
@@ -65,7 +63,7 @@ export function RepoRowSkeleton({ index = 0 }: { index?: number }) {
       <td
         className={cn(
           'overflow-hidden border-b border-b-row-divider px-3 py-3 sm:px-4',
-          REPOSITORY_TABLE_COLUMN_BOUNDS.stargazers_count,
+          'min-w-[7rem]',
         )}
       >
         <Skeleton className={cn('h-3.5', starsWidth)} />
@@ -73,7 +71,7 @@ export function RepoRowSkeleton({ index = 0 }: { index?: number }) {
       <td
         className={cn(
           'overflow-hidden border-b border-b-row-divider px-3 py-3 sm:px-4',
-          REPOSITORY_TABLE_COLUMN_BOUNDS.contribution_score,
+          'min-w-[10.75rem]',
         )}
       >
         <Skeleton className="h-6 w-[8.5rem] rounded-md" />
