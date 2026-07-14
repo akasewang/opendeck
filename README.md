@@ -45,7 +45,7 @@ RESEND_API_KEY=
 
 If an older local database already promoted the first registered user, run `npm run auth:sync-admins` to preview persisted role changes, then `npm run auth:sync-admins -- --apply` to align `auth_users.role` with `AUTH_ADMIN_EMAILS`.
 
-Authentication uses email magic links. `EMAIL_FROM` and `RESEND_API_KEY` are required in production for sign-in links, email verification, account digests and alerts.
+Authentication uses email magic links. Sign in opens as a modal from any page, so there is no dedicated sign in route. `EMAIL_FROM` and `RESEND_API_KEY` are required in production for login links, account digests and alerts.
 
 ## Commands
 
@@ -68,15 +68,17 @@ OpenDeck indexes selected public repositories into Postgres, scores them for con
 ### Source Map
 
 - `src/app`: pages, layouts, metadata routes and route handlers
-- `src/components`: shared brand, layout, UI, effects and transition components
-- `src/config`: app-wide runtime-safe configuration
+- `src/components`: genuinely shared brand, layout, UI, effect and transition components
+- `src/config`: application configuration and validated server environment access
 - `src/db`: Drizzle schema and database client
-- `src/features`: domain feature modules for dashboard, landing and repositories
+- `src/features`: domain modules for account, admin, auth, collections, dashboard, ingestion, landing, organizations and repositories
 - `src/hooks`: app-wide reusable client hooks
-- `src/lib`: server infrastructure and shared domain logic
+- `src/lib`: infrastructure integrations for API inputs, email, GitHub, security and SEO
 - `src/utils`: generic pure helpers
 - `src/operations`: typed operational command entrypoints for migrations, ingestion, admin sync and generated data
 - `drizzle`: migrations and snapshots
+
+Feature modules use the directories they need from `api`, `components`, `constants`, `data`, `hooks`, `motion`, `providers`, `services`, `types` and `utils`. Browser-facing API clients and request caches belong in a feature's `api` directory; server-side domain workflows belong in `services`; feature animation variants belong in `motion` or beside their owning component. A helper moves to `src/utils` or a component to `src/components` only when it is domain-independent and reused across features.
 
 ### Runtime Flow
 
@@ -84,7 +86,7 @@ OpenDeck indexes selected public repositories into Postgres, scores them for con
 GitHub API -> ingestion jobs -> normalization -> contribution gate -> Postgres mirror -> API routes -> public UI
 ```
 
-Discovery and trending jobs query focused GitHub search lanes from `src/lib/ingest/sources.ts`. Repository data is normalized in `src/lib/ingest/repositories.ts`, scored with `src/lib/repositories/contribution.ts` and stored with Drizzle.
+Discovery and trending jobs query focused GitHub search lanes from `src/features/ingestion/services/ingestion-sources.ts`. Repository data is normalized by `repository-ingestion-service.ts`, scored by `src/features/repositories/services/contribution-readiness.ts` and stored with Drizzle.
 
 The repository corpus is bounded by `DEFAULT_REPOSITORY_CORPUS_TARGET`. When the cap is reached, ingestion updates known repositories and skips unknown candidates.
 
@@ -93,7 +95,6 @@ A contribution-ready repository must be public, active, licensed, have a primary
 ### Routes
 
 - `/`: landing page with animated repository scatter
-- `/auth`: sign in and account creation
 - `/info`: product explanation and project links
 - `/dashboard`: curated repository overview
 - `/dashboard/compare`: side-by-side repository comparison
@@ -118,7 +119,6 @@ A contribution-ready repository must be public, active, licensed, have a primary
 - `/api/repos/contributors`
 - `/api/repos/detail`
 - `/api/repos/document`
-- `/api/auth/email-verification`
 - `/api/auth/magic-link`
 - `/api/auth/magic-link/callback`
 - `/api/auth/session`
@@ -136,23 +136,23 @@ Repository and organization list APIs remain public. Detail-style APIs used by r
 
 ### Server and Client Boundaries
 
-Server-only code lives in `src/db`, server modules under `src/lib`, route handlers and `src/operations`. These modules can read secrets, issue auth tokens, sign sessions, call GitHub with authorization headers and access the database.
+Server-only code lives in `src/db`, feature `services`, server infrastructure under `src/lib`, route handlers and `src/operations`. These modules can read secrets, issue auth tokens, sign sessions, call GitHub with authorization headers and access the database. Browser-only infrastructure is isolated under feature `api` directories or `src/lib/browser`.
 
 Client-safe code includes UI components, browser hooks, public constants and pure formatting helpers. Client code must not import `serverEnv`, `db`, ingestion modules or GitHub token helpers. The public UI fetches local API routes instead.
 
-Feature modules own their components, hooks, constants, types and feature-specific data. Shared primitives stay in `src/components/ui`, while cross-feature helpers belong in `src/utils`.
+Feature modules own their API clients, components, hooks, motion, providers, services, constants, types and feature-specific data. Shared primitives stay in `src/components/ui`, while cross-feature hooks and pure helpers belong in `src/hooks` and `src/utils` respectively. Files use lowercase kebab-case, React components and types use PascalCase, and functions and hooks use camelCase.
 
 ### UI, Motion and SEO
 
 Global semantic tokens live in `src/app/globals.css`. Component-specific styling stays in component class names unless it is genuinely shared.
 
-Motion-heavy UI respects `prefers-reduced-motion`. Page curtain transitions are skipped between dashboard routes and for reduced-motion users. The repository scatter falls back to a static layout for reduced-motion users.
+Shared motion timing and spring primitives live in `src/config/motion.ts`; component and feature variants stay with their owner. Motion-heavy UI respects `prefers-reduced-motion`. Page curtain transitions are skipped between dashboard routes and for reduced-motion users. The repository scatter falls back to a static layout for reduced-motion users.
 
 App Router metadata defines titles, descriptions, canonical URLs, Open Graph metadata and Twitter Card metadata. `src/app/sitemap.ts` and `src/app/robots.ts` are generated from public site configuration. Route-specific `opengraph-image.tsx` files provide generated cards, while the landing page uses `public/landing-preview.jpg` from page metadata.
 
 ## Security
 
-Server secrets are read through `src/lib/server-env.ts`. `DATABASE_URL`, `GITHUB_TOKEN`, `GH_INGEST_TOKEN`, `CRON_SECRET` and `AUTH_SECRET` are server only. `NEXT_PUBLIC_APP_URL` is public and must not contain secrets.
+Server secrets are read through `src/config/server-env.ts`. `DATABASE_URL`, `GITHUB_TOKEN`, `GH_INGEST_TOKEN`, `CRON_SECRET` and `AUTH_SECRET` are server only. `NEXT_PUBLIC_APP_URL` is public and must not contain secrets.
 
 Client components never import the database client, GitHub token rotation or ingestion modules.
 
@@ -180,8 +180,10 @@ npm audit --omit=dev
 
 ## Deployment Notes
 
-Set `DATABASE_URL`, `NEXT_PUBLIC_APP_URL`, `GITHUB_TOKEN`, `GH_INGEST_TOKEN`, `CRON_SECRET`, `AUTH_SECRET`, `EMAIL_FROM` and `RESEND_API_KEY` in the hosting environment. Run migrations before relying on ingestion jobs, magic-link sign-in, account alerts, digests or email verification. The included GitHub Actions workflows use `DATABASE_URL` and `GH_INGEST_TOKEN` secrets.
+Set `DATABASE_URL`, `NEXT_PUBLIC_APP_URL`, `GITHUB_TOKEN`, `GH_INGEST_TOKEN`, `CRON_SECRET`, `AUTH_SECRET`, `EMAIL_FROM` and `RESEND_API_KEY` in the hosting environment. Run migrations before relying on ingestion jobs, magic link authentication, account alerts or digests. The included GitHub Actions workflows use `DATABASE_URL` and `GH_INGEST_TOKEN` secrets.
 
-## Attribution
+## License
 
-OpenDeck is maintained as a public open source discovery project. Original project attribution remains with Akash Dewangan.
+OpenDeck is licensed under the [Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License](https://creativecommons.org/licenses/by-nc-sa/4.0/). See [`LICENSE`](LICENSE) for the license notice and legal-code link.
+
+Copyright (c) 2026 Akash Dewangan.

@@ -8,7 +8,8 @@ export default function ScrollEndShake() {
 
   useEffect(() => {
     if (pathname?.startsWith('/dashboard')) return
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)')
+    if (reducedMotion.matches) return
 
     let shaking = false
     let activeElement: HTMLElement | null = null
@@ -35,7 +36,7 @@ export default function ScrollEndShake() {
       document.body
 
     const trigger = () => {
-      if (shaking) return
+      if (shaking || reducedMotion.matches) return
       const el = target()
       shaking = true
       window.dispatchEvent(new CustomEvent('opendeck:page-shake'))

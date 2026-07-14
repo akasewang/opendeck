@@ -10,7 +10,10 @@ export default function AppError({
   reset: () => void
 }) {
   return (
-    <main className="relative min-h-screen overflow-hidden bg-background text-foreground">
+    <main
+      id="main-content"
+      className="relative min-h-dvh overflow-hidden bg-background text-foreground"
+    >
       <SiteHeader />
 
       <div className="relative z-10 w-full px-4 pb-24 pt-12 sm:pt-[60px]">

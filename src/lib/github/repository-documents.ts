@@ -1,5 +1,6 @@
 import { githubFetch } from '@/lib/github/client'
 import { absolutizeReadmeHtml, sanitizeRepositoryHtml } from '@/lib/github/markdown'
+import { isRecord } from '@/lib/api/input-normalization'
 
 const GITHUB_DOCUMENT_REVALIDATE_SECONDS = 3600
 
@@ -26,6 +27,17 @@ type GithubContentFile = {
   path?: string
 }
 type GithubReadmeMetadata = { path?: string; html_url?: string }
+
+function parseContentFile(value: unknown): GithubContentFile | null {
+  if (!isRecord(value)) return null
+  return {
+    encoding: typeof value.encoding === 'string' ? value.encoding : undefined,
+    content: typeof value.content === 'string' ? value.content : undefined,
+    html_url: typeof value.html_url === 'string' ? value.html_url : undefined,
+    name: typeof value.name === 'string' ? value.name : undefined,
+    path: typeof value.path === 'string' ? value.path : undefined,
+  }
+}
 
 export type RepositoryDocument = {
   id: string
@@ -115,7 +127,13 @@ export async function getRepositoryDefaultBranch(fullName: string) {
     next: { revalidate: GITHUB_DOCUMENT_REVALIDATE_SECONDS },
   })
   if (!res.ok) return 'HEAD'
-  const json = (await res.json().catch(() => null)) as GithubRepository | null
+  const payload: unknown = await res.json().catch(() => null)
+  const json: GithubRepository | null = isRecord(payload)
+    ? {
+        default_branch:
+          typeof payload.default_branch === 'string' ? payload.default_branch : undefined,
+      }
+    : null
   return json?.default_branch?.trim() || 'HEAD'
 }
 
@@ -125,10 +143,26 @@ async function listRepositoryFilePaths(fullName: string) {
       next: { revalidate: GITHUB_DOCUMENT_REVALIDATE_SECONDS },
     })
     if (!res.ok) return []
-    const json = (await res.json().catch(() => null)) as GithubContentItem[] | null
-    return (Array.isArray(json) ? json : [])
-      .filter((item) => item?.type === 'file' && item.path)
-      .map((item) => item.path as string)
+    const payload: unknown = await res.json().catch(() => null)
+    const json: GithubContentItem[] = Array.isArray(payload)
+      ? payload.flatMap((item) =>
+          isRecord(item)
+            ? [
+                {
+                  name: typeof item.name === 'string' ? item.name : undefined,
+                  path: typeof item.path === 'string' ? item.path : undefined,
+                  type: typeof item.type === 'string' ? item.type : undefined,
+                },
+              ]
+            : [],
+        )
+      : []
+    return json
+      .filter(
+        (item): item is GithubContentItem & { path: string } =>
+          item.type === 'file' && Boolean(item.path),
+      )
+      .map((item) => item.path)
       .filter(isSafeRepositoryPath)
   }
 
@@ -221,7 +255,8 @@ async function fetchContentPath(fullName: string, endpoint: 'readme' | 'license'
     next: { revalidate: GITHUB_DOCUMENT_REVALIDATE_SECONDS },
   })
   if (!res.ok) return null
-  const json = (await res.json().catch(() => null)) as GithubContentFile | null
+  const payload: unknown = await res.json().catch(() => null)
+  const json = parseContentFile(payload)
   return json?.path && isSafeRepositoryPath(json.path) ? json.path : null
 }
 
@@ -270,9 +305,16 @@ export async function renderRepositoryReadme(fullName: string, branch: string) {
   ])
   if (!htmlRes.ok) return null
 
-  const metadata = metaRes.ok
-    ? ((await metaRes.json().catch(() => null)) as GithubReadmeMetadata | null)
-    : null
+  let metadata: GithubReadmeMetadata | null = null
+  if (metaRes.ok) {
+    const value: unknown = await metaRes.json().catch(() => null)
+    if (isRecord(value)) {
+      metadata = {
+        path: typeof value.path === 'string' ? value.path : undefined,
+        html_url: typeof value.html_url === 'string' ? value.html_url : undefined,
+      }
+    }
+  }
   return sanitizeRepositoryHtml(
     absolutizeReadmeHtml(await htmlRes.text(), fullName, branch, metadata?.path),
   )
@@ -291,7 +333,8 @@ export async function getRepositoryLicenseDocument(
       next: { revalidate: GITHUB_DOCUMENT_REVALIDATE_SECONDS },
     })
     if (!res.ok) return null
-    const json = (await res.json().catch(() => null)) as GithubContentFile | null
+    const payload: unknown = await res.json().catch(() => null)
+    const json = parseContentFile(payload)
     return {
       id: 'license',
       spdx: null,
@@ -305,13 +348,14 @@ export async function getRepositoryLicenseDocument(
     next: { revalidate: GITHUB_DOCUMENT_REVALIDATE_SECONDS },
   })
   if (!res.ok) return null
-  const json = (await res.json()) as GithubContentFile & {
-    license?: { spdx_id?: string | null; name?: string | null } | null
-  }
+  const payload: unknown = await res.json().catch(() => null)
+  const json = parseContentFile(payload)
+  if (!json) return null
+  const license = isRecord(payload) && isRecord(payload.license) ? payload.license : null
   return {
     id: 'license',
-    spdx: json.license?.spdx_id ?? null,
-    name: json.license?.name ?? null,
+    spdx: typeof license?.spdx_id === 'string' ? license.spdx_id : null,
+    name: typeof license?.name === 'string' ? license.name : null,
     text: decodeGithubContent(json),
     htmlUrl: json.html_url ?? null,
   }

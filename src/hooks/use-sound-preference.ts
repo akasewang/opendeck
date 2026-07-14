@@ -36,7 +36,9 @@ export function useSoundPreference() {
     try {
       window.localStorage.setItem(SOUND_PREFERENCE_KEY, enabled ? '1' : '0')
       window.dispatchEvent(new Event(SOUND_PREFERENCE_EVENT))
-    } catch {}
+    } catch {
+      // The in-memory preference still works when browser storage is unavailable.
+    }
   }, [])
 
   const toggleSound = useCallback(() => {

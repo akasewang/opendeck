@@ -1,5 +1,5 @@
 import type { MetadataRoute } from 'next'
-import { APP_CONFIG } from '@/config/app'
+import { APP_CONFIG } from '@/config/application'
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
@@ -9,8 +9,8 @@ export default function manifest(): MetadataRoute.Manifest {
     start_url: '/',
     scope: '/',
     display: 'standalone',
-    background_color: '#0a0a0a',
-    theme_color: '#0a0a0a',
+    background_color: APP_CONFIG.themeColor,
+    theme_color: APP_CONFIG.themeColor,
     icons: [
       {
         src: '/icon.svg',

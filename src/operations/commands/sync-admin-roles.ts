@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm'
-import { db } from '@/db'
+import { serverEnv } from '@/config/server-env'
+import { db } from '@/db/client'
 import { authUsers } from '@/db/schema'
-import { serverEnv } from '@/lib/server-env'
 
 export async function runSyncAdminRolesCommand(args: string[]) {
   const apply = args.includes('--apply')
@@ -51,7 +51,7 @@ export async function runSyncAdminRolesCommand(args: string[]) {
   )
 
   if (!apply) {
-    console.log('Dry run only. Re-run with --apply to update auth_users.role.')
+    console.log('Dry run only. Run again with --apply to update auth_users.role.')
     return
   }
 
@@ -61,11 +61,15 @@ export async function runSyncAdminRolesCommand(args: string[]) {
     )
   }
 
-  for (const change of changes) {
-    await db
+  const updates = changes.map((change) =>
+    db
       .update(authUsers)
       .set({ role: change.nextRole, updatedAt: new Date() })
-      .where(eq(authUsers.id, change.id))
+      .where(eq(authUsers.id, change.id)),
+  )
+  const [firstUpdate, ...remainingUpdates] = updates
+  if (firstUpdate) {
+    await db.batch([firstUpdate, ...remainingUpdates])
   }
 
   console.log(`Applied ${changes.length} admin role change${changes.length === 1 ? '' : 's'}.`)

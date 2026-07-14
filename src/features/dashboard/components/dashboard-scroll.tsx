@@ -13,7 +13,7 @@ export default function DashboardScroll({ children }: { children: React.ReactNod
   }, [pathname])
 
   return (
-    <div ref={ref} data-dashboard-scroll className="hide-scrollbar flex-1 overflow-y-auto">
+    <div ref={ref} data-dashboard-scroll className="flex-1 overflow-y-auto pt-20 md:pt-0">
       {children}
     </div>
   )

@@ -4,38 +4,44 @@ import { Icon } from '@iconify/react'
 import { AnimatePresence, LayoutGroup, motion } from 'framer-motion'
 import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
-import { type ReactNode, Suspense, useState } from 'react'
+import { type ReactNode, Suspense, useEffect, useRef, useState } from 'react'
 import PianoTitle from '@/components/brand/piano-title'
 import { GradientAvatar } from '@/components/ui/gradient-avatar'
 import { Lock, Menu, X } from '@/components/ui/icons'
-import { useAuth } from '@/features/auth/auth-provider'
-import { navLinks } from '@/features/dashboard/navigation'
+import { ScrollShadow } from '@/components/ui/scroll-shadow'
+import {
+  MOTION_DELAY_SECONDS,
+  MOTION_DURATION_SECONDS,
+  MOTION_EASING,
+  MOTION_SPRING,
+} from '@/config/motion'
+import { useAuth } from '@/features/auth/providers/auth-provider'
+import {
+  SIDENAV_AUTH_ICON_CELL_WIDTH,
+  SIDENAV_AUTH_LABEL_WIDTH,
+  SIDENAV_BRAND_FIRST_TILE_WIDTH,
+  SIDENAV_BRAND_FULL_WIDTH,
+  SIDENAV_BRAND_SIDE_OFFSET,
+  SIDENAV_BRAND_TRAILING_OVERLAP,
+  SIDENAV_BRAND_TRAILING_WIDTH,
+  SIDENAV_RAIL_EXPANDED_WIDTH,
+  SIDENAV_RAIL_ICON_CELL_WIDTH,
+  SIDENAV_RAIL_LABEL_WIDTH,
+  SIDENAV_RAIL_SIDE_OFFSET,
+  SIDENAV_RAIL_WIDTH,
+} from '@/features/dashboard/constants/sidenav-layout'
+import { DASHBOARD_NAV_GROUPS } from '@/features/dashboard/data/dashboard-navigation'
 import { cn } from '@/utils/cn'
 
-const RAIL_WIDTH = 56
-const RAIL_GUTTER_WIDTH = 104
-const RAIL_EXPANDED_WIDTH = 256
-const BRAND_FIRST_TILE_WIDTH = 26
-const BRAND_FULL_WIDTH = 194
-const BRAND_TRAILING_WIDTH = BRAND_FULL_WIDTH - BRAND_FIRST_TILE_WIDTH
-const BRAND_TRAILING_OVERLAP = 2
-const RAIL_CONTENT_INSET = 10
-const AUTH_CONTROL_INSET = 8
-const RAIL_SIDE_OFFSET = (RAIL_GUTTER_WIDTH - RAIL_WIDTH) / 2
-const BRAND_SIDE_OFFSET = (RAIL_WIDTH - BRAND_FIRST_TILE_WIDTH) / 2
-const RAIL_ICON_CELL_WIDTH = RAIL_WIDTH - RAIL_CONTENT_INSET * 2
-const RAIL_LABEL_WIDTH = RAIL_EXPANDED_WIDTH - RAIL_CONTENT_INSET * 2 - RAIL_ICON_CELL_WIDTH
-const AUTH_ICON_CELL_WIDTH = RAIL_WIDTH - AUTH_CONTROL_INSET * 2
-const AUTH_LABEL_WIDTH = RAIL_EXPANDED_WIDTH - AUTH_CONTROL_INSET * 2 - AUTH_ICON_CELL_WIDTH
-const railTransition = { type: 'spring', stiffness: 420, damping: 38, mass: 0.9 } as const
-
 type NavVariant = 'rail' | 'mobile'
+
+const SIDENAV_RAIL_TRANSITION = MOTION_SPRING.rail
 
 function RailLabel({
   show,
   children,
   className,
-  width = RAIL_LABEL_WIDTH,
+  width = SIDENAV_RAIL_LABEL_WIDTH,
 }: {
   show: boolean
   children: ReactNode
@@ -47,9 +53,13 @@ function RailLabel({
       initial={false}
       animate={{ opacity: show ? 1 : 0, width: show ? width : 0, x: show ? 0 : -6 }}
       transition={{
-        width: railTransition,
-        opacity: { duration: show ? 0.18 : 0.1, delay: show ? 0.06 : 0, ease: 'easeOut' },
-        x: { duration: 0.18, ease: 'easeOut' },
+        width: SIDENAV_RAIL_TRANSITION,
+        opacity: {
+          duration: show ? MOTION_DURATION_SECONDS.standard : MOTION_DURATION_SECONDS.instant,
+          delay: show ? MOTION_DELAY_SECONDS.labelReveal : 0,
+          ease: MOTION_EASING.standard,
+        },
+        x: { duration: MOTION_DURATION_SECONDS.standard, ease: MOTION_EASING.standard },
       }}
       aria-hidden={!show}
       className={cn('flex min-w-0 flex-none overflow-hidden whitespace-nowrap', className)}
@@ -65,7 +75,7 @@ function RailReveal({ children }: { children: ReactNode }) {
 
 function RailIconCell({
   children,
-  width = RAIL_ICON_CELL_WIDTH,
+  width = SIDENAV_RAIL_ICON_CELL_WIDTH,
   className,
 }: {
   children: ReactNode
@@ -104,7 +114,7 @@ function SidebarNavigation({
     >
       <LayoutGroup id={`sidebar-nav-${variant}`}>
         <div className="flex flex-col gap-5">
-          {navLinks.map((group) => {
+          {DASHBOARD_NAV_GROUPS.map((group) => {
             const items = group.items.filter((item) =>
               'admin' in item && item.admin ? user?.role === 'admin' : true,
             )
@@ -112,7 +122,7 @@ function SidebarNavigation({
 
             return (
               <div key={group.title} className="space-y-1.5">
-                <div className="h-4 px-3.5 text-[11px] font-semibold uppercase tracking-normal leading-4 text-muted-foreground/60">
+                <div className="h-4 px-3.5 text-2xs font-semibold uppercase tracking-normal leading-4 text-muted-foreground/60">
                   {variant === 'mobile' ? (
                     group.title
                   ) : (
@@ -133,8 +143,8 @@ function SidebarNavigation({
                         {isActive && (
                           <motion.div
                             layoutId={`nav-active-tile-${variant}`}
-                            className="absolute inset-0 z-0 rounded-md border border-border/50 bg-background/70 shadow-[0_1px_3px_#00000040]"
-                            transition={railTransition}
+                            className="absolute inset-0 z-0 rounded-md border border-border/50 bg-background/70 shadow-active-navigation"
+                            transition={SIDENAV_RAIL_TRANSITION}
                           />
                         )}
                         <Link
@@ -305,12 +315,12 @@ function AuthControl({
           </>
         ) : (
           <RailReveal>
-            <RailIconCell width={AUTH_ICON_CELL_WIDTH} className="h-10">
+            <RailIconCell width={SIDENAV_AUTH_ICON_CELL_WIDTH} className="h-10">
               {avatar}
             </RailIconCell>
             <RailLabel
               show={showLabels}
-              width={AUTH_LABEL_WIDTH}
+              width={SIDENAV_AUTH_LABEL_WIDTH}
               className="flex min-w-0 items-center gap-2.5 pr-2"
             >
               {details}
@@ -326,14 +336,14 @@ function RailBrand({ expanded }: { expanded: boolean }) {
   return (
     <motion.div
       initial={false}
-      animate={{ width: expanded ? BRAND_FULL_WIDTH : BRAND_FIRST_TILE_WIDTH }}
-      transition={railTransition}
+      animate={{ width: expanded ? SIDENAV_BRAND_FULL_WIDTH : SIDENAV_BRAND_FIRST_TILE_WIDTH }}
+      transition={SIDENAV_RAIL_TRANSITION}
       className="relative h-12 shrink-0 overflow-hidden"
       aria-hidden="true"
     >
       <span
         className="absolute inset-y-0 left-0 flex items-center"
-        style={{ width: BRAND_FULL_WIDTH }}
+        style={{ width: SIDENAV_BRAND_FULL_WIDTH }}
       >
         <PianoTitle
           as="span"
@@ -347,12 +357,14 @@ function RailBrand({ expanded }: { expanded: boolean }) {
       </span>
       <motion.span
         initial={false}
-        animate={{ width: expanded ? BRAND_TRAILING_WIDTH + BRAND_TRAILING_OVERLAP : 0 }}
-        transition={railTransition}
+        animate={{
+          width: expanded ? SIDENAV_BRAND_TRAILING_WIDTH + SIDENAV_BRAND_TRAILING_OVERLAP : 0,
+        }}
+        transition={SIDENAV_RAIL_TRANSITION}
         className="absolute inset-y-0 flex items-center overflow-hidden"
-        style={{ left: BRAND_FIRST_TILE_WIDTH - BRAND_TRAILING_OVERLAP }}
+        style={{ left: SIDENAV_BRAND_FIRST_TILE_WIDTH - SIDENAV_BRAND_TRAILING_OVERLAP }}
       >
-        <span className="block shrink-0" style={{ width: BRAND_FULL_WIDTH }}>
+        <span className="block shrink-0" style={{ width: SIDENAV_BRAND_FULL_WIDTH }}>
           <PianoTitle
             as="span"
             text="pendeck"
@@ -372,38 +384,58 @@ export default function Sidenav() {
   const pathname = usePathname()
   const [isOpen, setIsOpen] = useState(false)
   const [isRailExpanded, setIsRailExpanded] = useState(false)
+  const mobileMenuButtonRef = useRef<HTMLButtonElement>(null)
   const closeMobileMenu = () => setIsOpen(false)
+
+  useEffect(() => {
+    if (!isOpen) return
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+      event.preventDefault()
+      setIsOpen(false)
+      mobileMenuButtonRef.current?.focus()
+    }
+
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [isOpen])
 
   return (
     <aside className="absolute z-30 w-full flex-shrink-0 md:relative md:w-[104px]">
-      <div className="mx-3 mt-3 flex h-14 items-center justify-between rounded-lg border border-border/60 bg-sidebar/95 px-4 shadow-[0_14px_45px_rgba(0,0,0,0.28)] backdrop-blur md:hidden">
-        <div className="w-36">
-          <Link href="/" onClick={closeMobileMenu} className="block w-full">
-            <PianoTitle
-              as="span"
-              text="opendeck"
-              interactive={false}
-              sound={false}
-              letterClassName="cursor-pointer"
-              className="font-display font-normal tracking-normal whitespace-nowrap"
-            />
-          </Link>
+      <div className="relative px-3 pt-3 md:hidden">
+        <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-background" />
+        <div className="relative flex h-14 items-center justify-between rounded-lg border border-border/60 bg-sidebar/95 px-4 shadow-floating backdrop-blur">
+          <div className="w-36">
+            <Link href="/" onClick={closeMobileMenu} className="block w-full">
+              <PianoTitle
+                as="span"
+                text="opendeck"
+                interactive={false}
+                sound={false}
+                letterClassName="cursor-pointer"
+                className="font-display font-normal tracking-normal whitespace-nowrap"
+              />
+            </Link>
+          </div>
+          <button
+            ref={mobileMenuButtonRef}
+            type="button"
+            onClick={() => setIsOpen((prev) => !prev)}
+            aria-label={isOpen ? 'Close menu' : 'Open menu'}
+            aria-expanded={isOpen}
+            aria-controls="dashboard-mobile-navigation"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border/50 bg-card/40 text-muted-foreground transition-colors hover:border-border/70 hover:bg-card hover:text-foreground"
+          >
+            {isOpen ? <X size={18} /> : <Menu size={18} />}
+          </button>
         </div>
-        <button
-          type="button"
-          onClick={() => setIsOpen((prev) => !prev)}
-          aria-label={isOpen ? 'Close menu' : 'Open menu'}
-          aria-expanded={isOpen}
-          className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border/50 bg-card/40 text-muted-foreground transition-colors hover:border-border/70 hover:bg-card hover:text-foreground"
-        >
-          {isOpen ? <X size={18} /> : <Menu size={18} />}
-        </button>
       </div>
 
       <motion.div
         initial={false}
-        animate={{ width: isRailExpanded ? RAIL_EXPANDED_WIDTH : RAIL_WIDTH }}
-        transition={railTransition}
+        animate={{ width: isRailExpanded ? SIDENAV_RAIL_EXPANDED_WIDTH : SIDENAV_RAIL_WIDTH }}
+        transition={SIDENAV_RAIL_TRANSITION}
         onHoverStart={() => setIsRailExpanded(true)}
         onHoverEnd={() => setIsRailExpanded(false)}
         onFocusCapture={() => setIsRailExpanded(true)}
@@ -413,28 +445,28 @@ export default function Sidenav() {
           }
         }}
         className={cn(
-          'absolute bottom-3 top-3 z-40 hidden flex-col overflow-hidden rounded-lg border border-border/60 bg-sidebar/95 shadow-[0_14px_45px_rgba(0,0,0,0.28)] backdrop-blur md:flex',
-          isRailExpanded && 'shadow-[0_18px_60px_rgba(0,0,0,0.36)]',
+          'absolute bottom-3 top-3 z-40 hidden flex-col overflow-hidden rounded-lg border border-border/60 bg-sidebar/95 shadow-floating backdrop-blur md:flex',
+          isRailExpanded && 'shadow-floating-hover',
         )}
-        style={{ left: RAIL_SIDE_OFFSET }}
+        style={{ left: SIDENAV_RAIL_SIDE_OFFSET }}
       >
         <Link
           href="/"
           aria-label="OpenDeck home"
           className="relative flex h-14 shrink-0 items-center overflow-hidden border-b border-border/40"
-          style={{ paddingLeft: BRAND_SIDE_OFFSET }}
+          style={{ paddingLeft: SIDENAV_BRAND_SIDE_OFFSET }}
         >
           <RailBrand expanded={isRailExpanded} />
         </Link>
 
-        <div className="hide-scrollbar min-h-0 flex-1 overflow-y-auto pt-1">
+        <ScrollShadow wrapperClassName="min-h-0 flex-1" className="hide-scrollbar pt-1">
           <NavigationSection
             variant="rail"
             expanded={isRailExpanded}
             pathname={pathname}
             closeMobileMenu={closeMobileMenu}
           />
-        </div>
+        </ScrollShadow>
 
         <AuthControl variant="rail" expanded={isRailExpanded} closeMobileMenu={closeMobileMenu} />
       </motion.div>
@@ -450,7 +482,7 @@ export default function Sidenav() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
+            transition={{ duration: MOTION_DURATION_SECONDS.quick }}
             className="fixed inset-x-0 bottom-0 top-[68px] z-20 cursor-default bg-black/50 backdrop-blur-sm md:hidden"
           />
         )}
@@ -460,13 +492,17 @@ export default function Sidenav() {
         {isOpen && (
           <motion.div
             key="mobile-sidebar"
+            id="dashboard-mobile-navigation"
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-            className="relative z-30 mx-3 mt-2 overflow-hidden rounded-lg border border-border/60 bg-sidebar/95 shadow-[0_14px_45px_rgba(0,0,0,0.28)] backdrop-blur md:hidden"
+            transition={{
+              duration: MOTION_DURATION_SECONDS.navigation,
+              ease: MOTION_EASING.enter,
+            }}
+            className="relative z-30 mx-3 mt-2 overflow-hidden rounded-lg border border-border/60 bg-sidebar/95 shadow-floating backdrop-blur md:hidden"
           >
-            <div className="max-h-[calc(100dvh-5.5rem)] overflow-y-auto">
+            <ScrollShadow className="hide-scrollbar max-h-[calc(100dvh-5.5rem)]">
               <NavigationSection
                 variant="mobile"
                 expanded
@@ -474,7 +510,7 @@ export default function Sidenav() {
                 closeMobileMenu={closeMobileMenu}
               />
               <AuthControl variant="mobile" expanded closeMobileMenu={closeMobileMenu} />
-            </div>
+            </ScrollShadow>
           </motion.div>
         )}
       </AnimatePresence>

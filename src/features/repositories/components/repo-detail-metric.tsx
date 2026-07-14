@@ -3,7 +3,7 @@
 import { Icon } from '@iconify/react'
 import { motion } from 'framer-motion'
 import type { ReactNode } from 'react'
-import { chipItem } from '@/features/repositories/components/repo-detail-motion'
+import { chipItem } from '@/features/repositories/motion/repo-detail-motion'
 
 export function Metric({
   icon,

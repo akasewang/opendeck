@@ -7,7 +7,7 @@
   },
   "files": {
     "ignoreUnknown": false,
-    "includes": ["**"]
+    "includes": ["**", "!!drizzle/meta"]
   },
   "formatter": {
     "enabled": true,
@@ -28,7 +28,13 @@
       },
       "a11y": {
         "useSemanticElements": "off",
-        "noSvgWithoutTitle": "off"
+        "noSvgWithoutTitle": "off",
+        "noLabelWithoutControl": {
+          "level": "error",
+          "options": {
+            "inputComponents": ["Input", "TextArea", "Select"]
+          }
+        }
       },
       "correctness": {
         "noUnknownProperty": "off",

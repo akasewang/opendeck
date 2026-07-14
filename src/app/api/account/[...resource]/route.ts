@@ -1,15 +1,18 @@
 import type { NextRequest } from 'next/server'
 import { NextResponse } from 'next/server'
 import {
-  createEmailToken,
   deleteAccount,
   deleteCollection,
   exportSavedRepos,
   getAccountOverview,
   getFollowState,
+  getFollowStates,
+  getRecommendationsPage,
   getRepoPersonalState,
+  getRepoPersonalStates,
   markAlertsRead,
   recordRecentView,
+  revokeSession,
   saveCollection,
   sessionTokenFromRequest,
   signOutOtherSessions,
@@ -18,8 +21,7 @@ import {
   updatePreferences,
   updateProfile,
   updateRepoPersonalState,
-  verifyEmail,
-} from '@/lib/account'
+} from '@/features/account/services/account-management-service'
 import {
   createCollectionFromTemplate,
   deleteRepoJournal,
@@ -32,8 +34,14 @@ import {
   saveRepoJournal,
   saveSavedSearch,
   shareCollection,
-} from '@/lib/account-features'
-import { clearSessionCookie, getUserFromRequest } from '@/lib/auth'
+} from '@/features/account/services/account-workspace-service'
+import {
+  clearSessionCookie,
+  getUserFromRequest,
+} from '@/features/auth/services/authentication-service'
+import { safeErrorContext } from '@/lib/api/errors'
+import { readJsonObject } from '@/lib/api/request-body'
+import { parseOptionalInteger } from '@/lib/api/query-parameters'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -44,20 +52,39 @@ type RouteContext = {
 
 function errorResponse(error: unknown, status = 400) {
   const message = error instanceof Error ? error.message : 'Unable to process request.'
+  const schemaMissing = message.includes('does not exist')
   const databaseError =
-    message.startsWith('Failed query') ||
-    message.includes('does not exist') ||
-    message.includes('violates')
+    schemaMissing || message.startsWith('Failed query') || message.includes('violates')
   const serviceUnavailable =
     message === 'Email delivery is not configured.' || message === 'Unable to send email right now.'
+  const notFound = message.endsWith('not found.') || message.includes('not in the OpenDeck mirror')
+  const conflict =
+    message.includes('already exists') ||
+    message.includes('already used') ||
+    message === 'At least one active admin must remain.'
+  const responseStatus = databaseError
+    ? 500
+    : serviceUnavailable
+      ? 503
+      : notFound
+        ? 404
+        : conflict
+          ? 409
+          : status
+
+  if (databaseError) {
+    console.error('Account API database operation failed', safeErrorContext(error))
+  }
 
   return NextResponse.json(
     {
       error: databaseError
-        ? 'Account database tables are not available. Run migrations and try again.'
+        ? schemaMissing
+          ? 'Account database tables are not available. Run migrations and try again.'
+          : 'Unable to complete the account request right now.'
         : message,
     },
-    { status: databaseError ? 500 : serviceUnavailable ? 503 : status },
+    { status: responseStatus },
   )
 }
 
@@ -65,11 +92,6 @@ async function requireUser(request: NextRequest) {
   const user = await getUserFromRequest(request)
   if (!user) return null
   return user
-}
-
-async function readBody(request: NextRequest) {
-  const body = await request.json().catch(() => ({}))
-  return typeof body === 'object' && body !== null ? (body as Record<string, unknown>) : {}
 }
 
 async function resourcePath(context: RouteContext) {
@@ -113,6 +135,14 @@ export async function GET(request: NextRequest, context: RouteContext) {
       return NextResponse.json({ items: await getIssueRecommendations(user.id) })
     }
 
+    if (resource === 'recommendations') {
+      const parsedPage = parseOptionalInteger('page', request.nextUrl.searchParams.get('page'), {
+        min: 1,
+      })
+      if (parsedPage.error) return NextResponse.json({ error: parsedPage.error }, { status: 400 })
+      return NextResponse.json(await getRecommendationsPage(user.id, parsedPage.value ?? 1))
+    }
+
     if (resource === 'collections') {
       return NextResponse.json(
         await getCollectionDetail(user.id, request.nextUrl.searchParams.get('id')),
@@ -129,7 +159,11 @@ export async function GET(request: NextRequest, context: RouteContext) {
     }
 
     if (resource === 'export') {
-      const format = request.nextUrl.searchParams.get('format') === 'csv' ? 'csv' : 'json'
+      const requestedFormat = request.nextUrl.searchParams.get('format')
+      if (requestedFormat && requestedFormat !== 'json' && requestedFormat !== 'csv') {
+        return NextResponse.json({ error: 'format must be json or csv.' }, { status: 400 })
+      }
+      const format = requestedFormat === 'csv' ? 'csv' : 'json'
       const exported = await exportSavedRepos(user.id, format)
       return new NextResponse(exported.body, {
         headers: {
@@ -153,7 +187,11 @@ export async function POST(request: NextRequest, context: RouteContext) {
   try {
     const path = await resourcePath(context)
     const [resource, action] = path
-    const body = await readBody(request)
+    const body = await readJsonObject(request)
+
+    if (resource === 'repo' && action === 'batch') {
+      return NextResponse.json({ items: await getRepoPersonalStates(user.id, body.fullNames) })
+    }
 
     if (resource === 'repo') {
       return NextResponse.json({ item: await updateRepoPersonalState(user.id, body) })
@@ -205,6 +243,10 @@ export async function POST(request: NextRequest, context: RouteContext) {
       return NextResponse.json({ savedSearch: await saveSavedSearch(user.id, body) })
     }
 
+    if (resource === 'follows' && action === 'batch') {
+      return NextResponse.json({ items: await getFollowStates(user.id, body) })
+    }
+
     if (resource === 'follows') {
       return NextResponse.json(await toggleFollow(user.id, body))
     }
@@ -225,6 +267,12 @@ export async function POST(request: NextRequest, context: RouteContext) {
       return NextResponse.json({ user: await updateProfile(user.id, body) })
     }
 
+    if (resource === 'sessions' && action === 'revoke') {
+      return NextResponse.json(
+        await revokeSession(user.id, body.sessionId, sessionTokenFromRequest(request)),
+      )
+    }
+
     if (resource === 'sessions' && action === 'sign-out-all') {
       const includeCurrent = body.includeCurrent === true
       const result = await signOutOtherSessions(
@@ -235,14 +283,6 @@ export async function POST(request: NextRequest, context: RouteContext) {
       const response = NextResponse.json(result)
       if (includeCurrent) clearSessionCookie(response)
       return response
-    }
-
-    if (resource === 'email-verification' && action === 'request') {
-      return NextResponse.json(await createEmailToken(user.email, 'email_verification', user.id))
-    }
-
-    if (resource === 'email-verification' && action === 'verify') {
-      return NextResponse.json(await verifyEmail(user.id, body.token))
     }
 
     if (resource === 'delete') {

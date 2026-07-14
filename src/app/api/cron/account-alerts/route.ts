@@ -1,14 +1,19 @@
 import { type NextRequest, NextResponse } from 'next/server'
-import { computeGoodFirstIssueAlerts } from '@/lib/account'
 import {
   checkSavedSearchAlerts,
+  computeGoodFirstIssueAlerts,
   createPipelineReminders,
   sendDueEmailDigests,
-} from '@/lib/account-features'
-import { isCronAuthorized } from '@/lib/cron-auth'
+} from '@/features/account/services/account-automation-service'
+import { isCronAuthorized } from '@/lib/security/cron-auth'
+import { parseOptionalInteger } from '@/lib/api/query-parameters'
+import { withJobLease } from '@/lib/jobs/job-lease-service'
+import { cleanupExpiredRateLimits } from '@/lib/security/rate-limit'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
+
+const ACCOUNT_AUTOMATION_LEASE_MS = 10 * 60 * 1000
 
 async function run(req: NextRequest) {
   if (!isCronAuthorized(req)) {
@@ -16,16 +21,33 @@ async function run(req: NextRequest) {
   }
 
   try {
-    const requestedLimit = Number.parseInt(req.nextUrl.searchParams.get('limit') ?? '', 10)
-    const limit = Number.isFinite(requestedLimit)
-      ? Math.min(Math.max(requestedLimit, 1), 5000)
-      : 500
-    const [goodFirstIssues, savedSearches, pipelineReminders, digests] = await Promise.all([
-      computeGoodFirstIssueAlerts(limit),
-      checkSavedSearchAlerts(Math.min(limit, 500)),
-      createPipelineReminders(Math.min(limit, 500)),
-      sendDueEmailDigests(Math.min(limit, 500)),
-    ])
+    const parsedLimit = parseOptionalInteger('limit', req.nextUrl.searchParams.get('limit'), {
+      min: 1,
+      max: 5000,
+    })
+    if (parsedLimit.error) {
+      return NextResponse.json({ error: parsedLimit.error }, { status: 400 })
+    }
+    const limit = parsedLimit.value ?? 500
+    const execution = await withJobLease('account-automation', ACCOUNT_AUTOMATION_LEASE_MS, () =>
+      Promise.all([
+        computeGoodFirstIssueAlerts(limit),
+        checkSavedSearchAlerts(Math.min(limit, 500)),
+        createPipelineReminders(Math.min(limit, 500)),
+        sendDueEmailDigests(Math.min(limit, 500)),
+      ]),
+    )
+
+    if (!execution.acquired) {
+      return NextResponse.json({ ok: true, skipped: true, reason: execution.reason })
+    }
+
+    const [goodFirstIssues, savedSearches, pipelineReminders, digests] = execution.value
+    try {
+      await cleanupExpiredRateLimits(new Date(Date.now() - 24 * 60 * 60 * 1000))
+    } catch (error) {
+      console.error('Expired rate-limit buckets could not be cleaned up', error)
+    }
 
     return NextResponse.json({
       ok: true,
@@ -33,15 +55,17 @@ async function run(req: NextRequest) {
     })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unable to compute account alerts.'
+    const schemaMissing = message.includes('does not exist')
     const databaseError =
-      message.startsWith('Failed query') ||
-      message.includes('does not exist') ||
-      message.includes('violates')
+      schemaMissing || message.startsWith('Failed query') || message.includes('violates')
+    console.error('Account alert cron failed', error)
 
     return NextResponse.json(
       {
         error: databaseError
-          ? 'Account database tables are not available. Run migrations and try again.'
+          ? schemaMissing
+            ? 'Account database tables are not available. Run migrations and try again.'
+            : 'Unable to compute account alerts right now.'
           : message,
       },
       { status: 500 },

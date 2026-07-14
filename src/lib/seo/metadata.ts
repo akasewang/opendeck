@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { APP_CONFIG } from '@/config/app'
+import { APP_CONFIG } from '@/config/application'
 
 type PageImage = {
   url: string
@@ -44,12 +44,7 @@ export function createOpenGraph({
   }
 }
 
-export function createPageMetadata({
-  title,
-  description,
-  path = '/',
-  image,
-}: PageMeta): Metadata {
+export function createPageMetadata({ title, description, path = '/', image }: PageMeta): Metadata {
   const previewImage = absoluteImage(image)
 
   return {

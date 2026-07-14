@@ -1,6 +1,8 @@
 import { type NextRequest, NextResponse } from 'next/server'
-import { completeMagicLink } from '@/lib/account'
-import { setSessionCookie } from '@/lib/auth'
+import { completeMagicLink } from '@/features/auth/services/magic-link-service'
+import { setSessionCookie } from '@/features/auth/services/authentication-service'
+import { callbackErrorCode } from '@/features/auth/utils/auth-error-messages'
+import { safeErrorContext } from '@/lib/api/errors'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -13,9 +15,10 @@ export async function GET(request: NextRequest) {
     setSessionCookie(response, result.token, result.expiresAt)
     return response
   } catch (error) {
-    const message = encodeURIComponent(
-      error instanceof Error ? error.message : 'Sign-in link is invalid or expired.',
-    )
-    return NextResponse.redirect(new URL(`/auth?error=${message}`, request.nextUrl.origin))
+    const code = callbackErrorCode(error instanceof Error ? error.message : '')
+    if (code === 'unknown') {
+      console.error('Magic-link callback failed unexpectedly', safeErrorContext(error))
+    }
+    return NextResponse.redirect(new URL(`/?error=${code}`, request.nextUrl.origin))
   }
 }

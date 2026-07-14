@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
-import { APP_CONFIG } from '@/config/app'
+import { APP_CONFIG } from '@/config/application'
+import { isRecord } from '@/lib/api/input-normalization'
 import { githubFetch } from '@/lib/github/client'
 
 export const revalidate = 3600
@@ -19,8 +20,13 @@ export async function GET() {
       return NextResponse.json({ count: null })
     }
 
-    const data = await response.json()
-    if (typeof data.stargazers_count !== 'number') {
+    const data: unknown = await response.json().catch(() => null)
+    if (
+      !isRecord(data) ||
+      typeof data.stargazers_count !== 'number' ||
+      !Number.isSafeInteger(data.stargazers_count) ||
+      data.stargazers_count < 0
+    ) {
       return NextResponse.json({ count: null })
     }
 

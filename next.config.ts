@@ -23,8 +23,13 @@ if (process.env.NODE_ENV === 'production') {
 
 const nextConfig: NextConfig = {
   images: {
-    unoptimized: true,
     remotePatterns: [{ protocol: 'https', hostname: 'avatars.githubusercontent.com' }],
+  },
+  webpack(config, { isServer }) {
+    if (isServer && config.output) {
+      config.output.chunkFilename = 'chunks/[name].js'
+    }
+    return config
   },
   async headers() {
     return [

@@ -21,11 +21,20 @@
     --ring: oklch(0.45 0 0);
 
     --accent: oklch(0.905 0.182 100.3);
-    --accent-foreground: oklch(0.22 0.05 100);
     --destructive: oklch(0.757 0.134 23.4);
     --highlight: oklch(0.669 0.178 52.8);
     --success: oklch(0.84 0.134 162.7);
     --info: oklch(0.81 0.106 244);
+
+    --motion-duration-fast: 120ms;
+    --motion-duration-standard: 180ms;
+    --motion-duration-moderate: 250ms;
+    --motion-duration-slow: 300ms;
+    --motion-duration-tooltip: 400ms;
+    --motion-ease-standard: cubic-bezier(0.16, 1, 0.3, 1);
+    --motion-ease-emphasized: cubic-bezier(0.22, 1, 0.36, 1);
+    --motion-ease-exit: cubic-bezier(0.4, 0, 1, 1);
+    --z-toast: 85;
 
     --shadow-sm: 0 1px 3px oklch(0% 0 0 / 0.06), 0 2px 8px oklch(0% 0 0 / 0.06);
     --shadow-md: 0 2px 8px oklch(0% 0 0 / 0.07), 0 6px 24px oklch(0% 0 0 / 0.07);
@@ -51,7 +60,6 @@
     --ring: oklch(0.5 0 0);
 
     --accent: oklch(0.905 0.182 100.3);
-    --accent-foreground: oklch(0.22 0.05 100);
     --destructive: oklch(0.757 0.134 23.4);
     --highlight: oklch(0.669 0.178 52.8);
     --success: oklch(0.84 0.134 162.7);
@@ -82,7 +90,6 @@
   --color-ring: var(--ring);
 
   --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-highlight: var(--highlight);
 
@@ -96,6 +103,22 @@
   --shadow-2xl: var(--shadow-2xl);
   --shadow-inner: var(--shadow-inner);
   --shadow-inner-sm: var(--shadow-inner-sm);
+  --shadow-interactive: 0 2px 14px oklch(0% 0 0 / 0.35);
+  --shadow-table-header: 0 10px 14px -10px oklch(0% 0 0 / 0.75);
+  --shadow-floating: 0 14px 45px oklch(0% 0 0 / 0.28);
+  --shadow-floating-hover: 0 18px 60px oklch(0% 0 0 / 0.36);
+  --shadow-popover: 0 10px 30px oklch(0% 0 0 / 0.32);
+  --shadow-popover-hover: 0 14px 40px oklch(0% 0 0 / 0.4);
+  --shadow-active-navigation: 0 1px 3px oklch(0% 0 0 / 0.25);
+  --shadow-repository-tile: 0 0 0 1px oklch(0% 0 0 / 0.55),
+    0 10px 20px -6px oklch(0% 0 0 / 0.7), 0 3px 6px -3px oklch(0% 0 0 / 0.6);
+  --shadow-repository-tile-overlay: inset 0 1.5px 0 0 oklch(100% 0 0 / 0.45),
+    inset 0 -3px 6px -1px oklch(0% 0 0 / 0.55), inset 0 0 0 1px oklch(100% 0 0 / 0.12);
+  --shadow-kbd: 0 1.5px 0 oklch(0.2 0 0), inset 0 1px 0 oklch(100% 0 0 / 0.2),
+    inset 0 -1px 1px oklch(0% 0 0 / 0.4);
+
+  --text-2xs: 0.6875rem;
+  --text-2xs--line-height: 1rem;
 }
 
 body {
@@ -109,22 +132,15 @@ html {
   color-scheme: dark;
 }
 
-*:focus,
-*:focus-visible {
-  outline: none !important;
-  --tw-ring-shadow: 0 0 #0000 !important;
-  --tw-ring-offset-shadow: 0 0 #0000 !important;
+:where(a, button, input, textarea, select, summary, [tabindex]:not([tabindex='-1'])):focus-visible {
+  outline: 2px solid var(--color-ring) !important;
+  outline-offset: 2px !important;
 }
 
-* {
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-
-*::-webkit-scrollbar {
-  width: 0;
-  height: 0;
-  display: none;
+@media (forced-colors: active) {
+  :where(a, button, input, textarea, select, summary, [tabindex]:not([tabindex='-1'])):focus-visible {
+    outline-color: Highlight !important;
+  }
 }
 
 .hide-scrollbar {
@@ -249,20 +265,20 @@ html {
 }
 
 .tooltip-elegant:is([data-state='delayed-open'], [data-state='instant-open'])[data-side='top'] {
-  animation: popover-in-top 400ms cubic-bezier(0.175, 0.885, 0.32, 1.15) both;
+  animation: popover-in-top var(--motion-duration-tooltip) cubic-bezier(0.175, 0.885, 0.32, 1.15) both;
 }
 .tooltip-elegant:is([data-state='delayed-open'], [data-state='instant-open'])[data-side='bottom'] {
-  animation: popover-in-bottom 400ms cubic-bezier(0.175, 0.885, 0.32, 1.15) both;
+  animation: popover-in-bottom var(--motion-duration-tooltip) cubic-bezier(0.175, 0.885, 0.32, 1.15) both;
 }
 .tooltip-elegant:is([data-state='delayed-open'], [data-state='instant-open'])[data-side='left'] {
-  animation: popover-in-left 400ms cubic-bezier(0.175, 0.885, 0.32, 1.15) both;
+  animation: popover-in-left var(--motion-duration-tooltip) cubic-bezier(0.175, 0.885, 0.32, 1.15) both;
 }
 .tooltip-elegant:is([data-state='delayed-open'], [data-state='instant-open'])[data-side='right'] {
-  animation: popover-in-right 400ms cubic-bezier(0.175, 0.885, 0.32, 1.15) both;
+  animation: popover-in-right var(--motion-duration-tooltip) cubic-bezier(0.175, 0.885, 0.32, 1.15) both;
 }
 
 .tooltip-elegant[data-state='closed'] {
-  animation: fade-scale-out 200ms cubic-bezier(0.4, 0, 1, 1) both;
+  animation: fade-scale-out var(--motion-duration-standard) var(--motion-ease-exit) both;
 }
 
 .select-content-elegant {
@@ -282,16 +298,16 @@ html {
 }
 
 .select-content-elegant[data-state='open'][data-side='top'] {
-  animation: select-in-up 200ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: select-in-up var(--motion-duration-standard) var(--motion-ease-standard) both;
 }
 .select-content-elegant[data-state='open'][data-side='bottom'],
 .select-content-elegant[data-state='open'][data-side='left'],
 .select-content-elegant[data-state='open'][data-side='right'] {
-  animation: select-in-down 200ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: select-in-down var(--motion-duration-standard) var(--motion-ease-standard) both;
 }
 
 .select-content-elegant[data-state='closed'] {
-  animation: select-out 130ms cubic-bezier(0.4, 0, 1, 1) both;
+  animation: select-out var(--motion-duration-fast) var(--motion-ease-exit) both;
 }
 
 @keyframes select-in-down {
@@ -338,7 +354,7 @@ html {
   .tooltip-elegant,
   .select-content-elegant {
     animation: none !important;
-    transition: opacity 120ms linear;
+    transition: opacity var(--motion-duration-fast) linear;
   }
 }
 
@@ -364,9 +380,21 @@ html {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-delay: 0ms !important;
+    transition-duration: 0.01ms !important;
+  }
+
   .skeleton {
     animation: none;
     background-image: none;
+  }
+
+  .animate-spin {
+    animation: none !important;
   }
 }
 
@@ -445,7 +473,7 @@ html {
   text-decoration-thickness: 1px;
   text-underline-offset: 0.2em;
   font-weight: 500;
-  transition: text-decoration-color 120ms ease;
+  transition: text-decoration-color var(--motion-duration-fast) ease;
 }
 .readme-html a:hover {
   text-decoration-color: currentColor;

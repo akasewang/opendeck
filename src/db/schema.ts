@@ -25,7 +25,6 @@ export const authUsers = pgTable(
     email: text('email').notNull(),
     role: text('role').default('user').notNull(),
     status: text('status').default('active').notNull(),
-    emailVerifiedAt: timestamp('email_verified_at'),
     lastLoginAt: timestamp('last_login_at'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
@@ -187,6 +186,24 @@ export const ingestRuns = pgTable('ingest_runs', {
   error: text('error'),
   metadata: jsonb('metadata').$type<Record<string, unknown>>().default(sql`'{}'::jsonb`).notNull(),
 })
+
+export const automationJobLeases = pgTable('automation_job_leases', {
+  key: text('key').primaryKey(),
+  holderToken: text('holder_token').notNull(),
+  expiresAt: timestamp('expires_at').notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+export const rateLimitBuckets = pgTable(
+  'rate_limit_buckets',
+  {
+    key: text('key').primaryKey(),
+    count: integer('count').default(0).notNull(),
+    resetAt: timestamp('reset_at').notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => [index('rate_limit_buckets_reset_idx').on(table.resetAt)],
+)
 
 export const repoMetricSnapshots = pgTable(
   'repo_metric_snapshots',
@@ -437,6 +454,15 @@ export const repoIssues = pgTable(
   ],
 )
 
+export const repositorySyncStates = pgTable('repository_sync_states', {
+  repoId: uuid('repo_id')
+    .primaryKey()
+    .references(() => repos.id, { onDelete: 'cascade' }),
+  issuesFetchedAt: timestamp('issues_fetched_at').notNull(),
+  issuesComplete: boolean('issues_complete').default(false).notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
 export const userRepoJournalEntries = pgTable(
   'user_repo_journal_entries',
   {
@@ -466,6 +492,7 @@ export const emailDeliveries = pgTable(
     userId: uuid('user_id').references(() => authUsers.id, { onDelete: 'set null' }),
     email: text('email').notNull(),
     type: text('type').notNull(),
+    idempotencyKey: text('idempotency_key'),
     subject: text('subject').notNull(),
     provider: text('provider'),
     status: text('status').default('queued').notNull(),
@@ -478,6 +505,7 @@ export const emailDeliveries = pgTable(
     createdAt: timestamp('created_at').defaultNow().notNull(),
   },
   (table) => [
+    uniqueIndex('email_deliveries_idempotency_key_idx').on(table.idempotencyKey),
     index('email_deliveries_user_idx').on(table.userId),
     index('email_deliveries_status_idx').on(table.status),
     index('email_deliveries_type_idx').on(table.type),
@@ -514,6 +542,8 @@ export const schema = {
   repos,
   curatedProjects,
   ingestRuns,
+  automationJobLeases,
+  rateLimitBuckets,
   repoMetricSnapshots,
   userPreferences,
   userOnboardingProfiles,
@@ -525,6 +555,7 @@ export const schema = {
   userRecentViews,
   userAlerts,
   repoIssues,
+  repositorySyncStates,
   userRepoJournalEntries,
   emailDeliveries,
   adminAuditLogs,

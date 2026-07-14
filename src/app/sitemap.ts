@@ -1,23 +1,21 @@
 import type { MetadataRoute } from 'next'
-import { APP_CONFIG } from '@/config/app'
+import { APP_CONFIG } from '@/config/application'
+import { APP_ROUTES } from '@/config/routes'
 
 const ROUTES = [
-  '/',
-  '/info',
-  '/dashboard',
-  '/dashboard/trending',
-  '/dashboard/discover',
-  '/dashboard/compare',
-  '/dashboard/organizations',
-]
+  APP_ROUTES.landing,
+  APP_ROUTES.info,
+  APP_ROUTES.dashboard,
+  APP_ROUTES.dashboardTrending,
+  APP_ROUTES.dashboardDiscover,
+  APP_ROUTES.dashboardCompare,
+  APP_ROUTES.dashboardOrganizations,
+] as const
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const now = new Date()
-
   return ROUTES.map((route) => ({
-    url: `${APP_CONFIG.url}${route === '/' ? '' : route}`,
-    lastModified: now,
-    changeFrequency: route === '/' ? 'daily' : 'hourly',
-    priority: route === '/' ? 1 : 0.8,
+    url: `${APP_CONFIG.url}${route === APP_ROUTES.landing ? '' : route}`,
+    changeFrequency: route === APP_ROUTES.landing ? 'daily' : 'hourly',
+    priority: route === APP_ROUTES.landing ? 1 : 0.8,
   }))
 }

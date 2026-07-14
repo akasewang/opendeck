@@ -1,14 +1,36 @@
 'use client'
 
 import { Icon } from '@iconify/react'
-import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useReducedMotion } from 'framer-motion'
+import {
+  type KeyboardEvent,
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
+import { ScrollShadow } from '@/components/ui/scroll-shadow'
 import { Skeleton } from '@/components/ui/skeleton'
+import { API_ROUTES } from '@/config/routes'
+import {
+  FLOATING_LINK_CLASS,
+  PanelHeader,
+} from '@/features/repositories/components/repo-detail-states'
+import {
+  REPOSITORY_DOCUMENT_FETCH_TIMEOUT_MS,
+  REPOSITORY_DOCUMENT_META,
+  REPOSITORY_PRIMARY_DOCUMENT_IDS,
+  REPOSITORY_PRIMARY_MARKDOWN_DOCUMENT_IDS,
+  REPOSITORY_SECONDARY_DOCUMENT_TITLE,
+  type RepositoryDocumentId,
+} from '@/features/repositories/constants/repository-documents'
+import { fetchWithTimeout } from '@/lib/api/http-client'
+import { isRecord } from '@/lib/api/input-normalization'
+import { apiErrorMessage } from '@/lib/api/errors'
 import { cn } from '@/utils/cn'
-
-const FLOATING_LINK_CLASS =
-  'absolute bottom-3 left-3 right-3 z-10 inline-flex h-8 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-md border border-border/40 bg-background px-2.5 text-xs font-medium text-foreground shadow-sm transition hover:border-border/70 hover:bg-muted-hover-solid active:scale-[0.98]'
-
-type KnownDocId = 'readme' | 'license' | 'security' | 'contributing' | 'code_of_conduct'
 
 type ManifestDoc = {
   id: string
@@ -39,35 +61,7 @@ type DocState =
       htmlUrl?: string
     }
 
-const DOC_META: Record<KnownDocId, { label: string; icon: string }> = {
-  readme: { label: 'README', icon: 'ri:file-text-line' },
-  license: { label: 'License', icon: 'ri:scales-3-line' },
-  security: { label: 'Security', icon: 'ri:shield-check-line' },
-  contributing: { label: 'Contributing', icon: 'ri:git-pull-request-line' },
-  code_of_conduct: { label: 'Code of conduct', icon: 'ri:hand-heart-line' },
-}
-
-const PRIMARY_DOC_IDS = new Set<KnownDocId>([
-  'readme',
-  'license',
-  'security',
-  'contributing',
-  'code_of_conduct',
-])
-const PRIMARY_MARKDOWN_DOC_IDS: KnownDocId[] = ['security', 'contributing', 'code_of_conduct']
-const SECONDARY_DOC_TITLE = 'Additional markdown'
 const EMPTY_MANIFEST: ManifestDoc[] = []
-const DOCUMENT_FETCH_TIMEOUT_MS = 15_000
-
-async function fetchWithTimeout(input: RequestInfo | URL, init: RequestInit, timeoutMs: number) {
-  const controller = new AbortController()
-  const timeout = window.setTimeout(() => controller.abort(), timeoutMs)
-  try {
-    return await fetch(input, { ...init, signal: controller.signal })
-  } finally {
-    window.clearTimeout(timeout)
-  }
-}
 
 function documentErrorMessage(error: unknown) {
   if (error instanceof Error && error.name === 'AbortError') {
@@ -76,12 +70,12 @@ function documentErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : 'Unable to load document.'
 }
 
-function isKnownDocId(id: string): id is KnownDocId {
-  return id in DOC_META
+function isKnownDocId(id: string): id is RepositoryDocumentId {
+  return id in REPOSITORY_DOCUMENT_META
 }
 
 function tabForManifestDoc(doc: ManifestDoc): Tab {
-  const meta = isKnownDocId(doc.id) ? DOC_META[doc.id] : null
+  const meta = isKnownDocId(doc.id) ? REPOSITORY_DOCUMENT_META[doc.id] : null
   return {
     id: doc.id,
     label: doc.label ?? meta?.label ?? doc.path,
@@ -105,7 +99,7 @@ function primaryTabs(manifest: ManifestDoc[], repoHtmlUrl?: string, hasLicense?:
   const list: Tab[] = [
     {
       id: 'readme',
-      ...DOC_META.readme,
+      ...REPOSITORY_DOCUMENT_META.readme,
       kind: 'readme',
       path: readmeDoc?.path,
       htmlUrl: readmeDoc?.htmlUrl ?? (repoHtmlUrl ? `${repoHtmlUrl}#readme` : undefined),
@@ -115,14 +109,14 @@ function primaryTabs(manifest: ManifestDoc[], repoHtmlUrl?: string, hasLicense?:
   if (licenseDoc || hasLicense) {
     list.push({
       id: 'license',
-      ...DOC_META.license,
+      ...REPOSITORY_DOCUMENT_META.license,
       kind: 'license',
       path: licenseDoc?.path,
       htmlUrl: licenseDoc?.htmlUrl ?? repoHtmlUrl,
     })
   }
 
-  for (const id of PRIMARY_MARKDOWN_DOC_IDS) {
+  for (const id of REPOSITORY_PRIMARY_MARKDOWN_DOCUMENT_IDS) {
     const doc = byId.get(id)
     if (doc) list.push(tabForManifestDoc(doc))
   }
@@ -133,7 +127,7 @@ function primaryTabs(manifest: ManifestDoc[], repoHtmlUrl?: string, hasLicense?:
 function secondaryMarkdownTabs(manifest: ManifestDoc[]) {
   const primaryPaths = new Set(
     manifest
-      .filter((doc) => isKnownDocId(doc.id) && PRIMARY_DOC_IDS.has(doc.id))
+      .filter((doc) => isKnownDocId(doc.id) && REPOSITORY_PRIMARY_DOCUMENT_IDS.includes(doc.id))
       .map((doc) => doc.path),
   )
 
@@ -145,15 +139,18 @@ function secondaryMarkdownTabs(manifest: ManifestDoc[]) {
 function DocsTabHeader({
   tabs,
   active,
+  idPrefix,
   onActiveChange,
 }: {
   tabs: Tab[]
   active: string
+  idPrefix: string
   onActiveChange: (id: string) => void
 }) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const [canScrollLeft, setCanScrollLeft] = useState(false)
   const [canScrollRight, setCanScrollRight] = useState(false)
+  const prefersReducedMotion = useReducedMotion()
 
   const updateScrollState = useCallback(() => {
     const node = scrollRef.current
@@ -164,11 +161,30 @@ function DocsTabHeader({
     setCanScrollRight(hasOverflow && node.scrollLeft < maxScrollLeft - 1)
   }, [])
 
-  const scrollTabs = useCallback((direction: -1 | 1) => {
-    const node = scrollRef.current
-    if (!node) return
-    node.scrollBy({ left: direction * Math.max(node.clientWidth * 0.75, 160), behavior: 'smooth' })
-  }, [])
+  const scrollTabs = useCallback(
+    (direction: -1 | 1) => {
+      const node = scrollRef.current
+      if (!node) return
+      node.scrollBy({
+        left: direction * Math.max(node.clientWidth * 0.75, 160),
+        behavior: prefersReducedMotion ? 'auto' : 'smooth',
+      })
+    },
+    [prefersReducedMotion],
+  )
+
+  const moveFocus = (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
+    let nextIndex: number | null = null
+    if (event.key === 'ArrowRight') nextIndex = (index + 1) % tabs.length
+    if (event.key === 'ArrowLeft') nextIndex = (index - 1 + tabs.length) % tabs.length
+    if (event.key === 'Home') nextIndex = 0
+    if (event.key === 'End') nextIndex = tabs.length - 1
+    if (nextIndex === null) return
+
+    event.preventDefault()
+    onActiveChange(tabs[nextIndex].id)
+    document.getElementById(`${idPrefix}-tab-${nextIndex}`)?.focus()
+  }
 
   useEffect(() => {
     updateScrollState()
@@ -201,13 +217,21 @@ function DocsTabHeader({
 
       <div
         ref={scrollRef}
+        role="tablist"
+        aria-label="Repository documents"
         className="hide-scrollbar flex min-w-0 flex-1 items-center gap-1 overflow-x-auto"
       >
-        {tabs.map((tab) => (
+        {tabs.map((tab, index) => (
           <button
             key={tab.id}
+            id={`${idPrefix}-tab-${index}`}
             type="button"
+            role="tab"
+            aria-selected={active === tab.id}
+            aria-controls={`${idPrefix}-panel`}
+            tabIndex={active === tab.id ? 0 : -1}
             onClick={() => onActiveChange(tab.id)}
+            onKeyDown={(event) => moveFocus(event, index)}
             title={tab.path ?? tab.label}
             className={cn(
               'inline-flex h-8 max-w-52 shrink-0 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium transition-colors',
@@ -256,10 +280,15 @@ function DocumentTabsPanel({
   const [active, setActive] = useState('')
   const [content, setContent] = useState<Record<string, DocState>>({})
   const contentStateRef = useRef(content)
-  const contentNodeRef = useRef<HTMLDivElement>(null)
+  const contentNodeRef = useRef<HTMLDivElement | null>(null)
   const isMountedRef = useRef(false)
   const requestScopeRef = useRef('')
+  const tabSetId = useId()
   const tabsKey = useMemo(() => tabs.map((tab) => `${tab.id}:${tab.path ?? ''}`).join('|'), [tabs])
+
+  const setContentNode = useCallback((node: HTMLDivElement | null) => {
+    contentNodeRef.current = node
+  }, [])
 
   useEffect(() => {
     isMountedRef.current = true
@@ -294,30 +323,51 @@ function DocumentTabsPanel({
     if (tab.path) params.set('path', tab.path)
 
     fetchWithTimeout(
-      `/api/repos/document?${params.toString()}`,
+      `${API_ROUTES.repositories.document}?${params.toString()}`,
       {
         credentials: 'include',
         cache: 'no-store',
       },
-      DOCUMENT_FETCH_TIMEOUT_MS,
+      REPOSITORY_DOCUMENT_FETCH_TIMEOUT_MS,
     )
       .then(async (res) => {
-        const payload = await res.json().catch(() => null)
-        if (!res.ok) throw new Error(payload?.error || 'Unable to load document.')
+        const payload: unknown = await res.json().catch(() => null)
+        if (!res.ok) throw new Error(apiErrorMessage(payload, 'Unable to load document.'))
         return payload
       })
       .then((payload) => {
         if (!isMountedRef.current || requestScopeRef.current !== requestScope) return
-        const next: DocState =
-          tab.kind === 'license'
-            ? {
-                status: 'license',
-                text: payload.text ?? '',
-                spdx: payload.spdx,
-                name: payload.name,
-                htmlUrl: payload.htmlUrl,
-              }
-            : { status: 'html', html: payload.html ?? '', htmlUrl: payload.htmlUrl }
+        if (!isRecord(payload)) throw new Error('Document API returned an invalid response.')
+        let next: DocState
+        if (tab.kind === 'license') {
+          if (
+            typeof payload.text !== 'string' ||
+            (payload.spdx !== undefined &&
+              payload.spdx !== null &&
+              typeof payload.spdx !== 'string') ||
+            (payload.name !== undefined &&
+              payload.name !== null &&
+              typeof payload.name !== 'string') ||
+            (payload.htmlUrl !== undefined && typeof payload.htmlUrl !== 'string')
+          ) {
+            throw new Error('Document API returned an invalid license response.')
+          }
+          next = {
+            status: 'license',
+            text: payload.text,
+            spdx: payload.spdx,
+            name: payload.name,
+            htmlUrl: payload.htmlUrl,
+          }
+        } else {
+          if (
+            typeof payload.html !== 'string' ||
+            (payload.htmlUrl !== undefined && typeof payload.htmlUrl !== 'string')
+          ) {
+            throw new Error('Document API returned an invalid markdown response.')
+          }
+          next = { status: 'html', html: payload.html, htmlUrl: payload.htmlUrl }
+        }
         contentStateRef.current = { ...contentStateRef.current, [tabId]: next }
         setContent((prev) => ({ ...prev, [tabId]: next }))
       })
@@ -346,35 +396,54 @@ function DocumentTabsPanel({
   })
 
   const activeTab = tabs.find((t) => t.id === active)
+  const activeIndex = tabs.findIndex((tab) => tab.id === active)
+  const activeState = content[active]
   const openUrl = activeTab?.htmlUrl
 
   return (
     <>
-      <div className="flex h-11 shrink-0 items-center justify-between gap-3 border-b border-border/40 px-4">
-        <h2 className="flex min-w-0 items-center gap-2 text-sm font-semibold text-foreground">
-          <Icon icon={icon} className="h-4 w-4 shrink-0 text-muted-foreground/70" />
-          <span className="truncate">{title}</span>
-        </h2>
-        {tabs.length > 0 ? (
-          <span className="font-mono text-xs tabular-nums text-muted-foreground">
-            {tabs.length}
-          </span>
-        ) : null}
-      </div>
-      <DocsTabHeader key={tabsKey} tabs={tabs} active={active} onActiveChange={setActive} />
+      <PanelHeader icon={icon} title={title} count={tabs.length} />
+      <DocsTabHeader
+        key={tabsKey}
+        tabs={tabs}
+        active={active}
+        idPrefix={tabSetId}
+        onActiveChange={setActive}
+      />
 
-      <div ref={contentNodeRef} className="min-h-0 flex-1 overflow-y-auto px-4 pb-14 pt-4">
-        {tabs.length > 0 ? (
-          <DocBody
-            active={active}
-            state={content[active]}
-            readmeHtml={readmeHtml}
-            readmeFallback={readmeFallback}
-          />
+      <ScrollShadow
+        wrapperClassName="min-h-0 flex-1"
+        className="px-4 pb-14 pt-4"
+        viewportRef={setContentNode}
+        backToTop
+        backToTopClassName="bottom-14"
+      >
+        {activeIndex >= 0 ? (
+          <div
+            id={`${tabSetId}-panel`}
+            role="tabpanel"
+            aria-labelledby={`${tabSetId}-tab-${activeIndex}`}
+            aria-busy={activeState?.status === 'loading' || undefined}
+            className="min-h-full"
+          >
+            {activeState?.status === 'loading' && (
+              <span role="status" className="sr-only">
+                Loading {activeTab?.label ?? 'document'}
+              </span>
+            )}
+            <DocBody
+              active={active}
+              state={activeState}
+              readmeHtml={readmeHtml}
+              readmeFallback={readmeFallback}
+            />
+          </div>
         ) : (
-          <DocEmpty>{emptyMessage}</DocEmpty>
+          <div className="min-h-full">
+            <DocEmpty>{emptyMessage}</DocEmpty>
+          </div>
         )}
-      </div>
+      </ScrollShadow>
 
       {openUrl && (
         <a href={openUrl} target="_blank" rel="noopener noreferrer" className={FLOATING_LINK_CLASS}>
@@ -434,7 +503,7 @@ export function RepoAdditionalMarkdownPanel({
     <DocumentTabsPanel
       fullName={fullName}
       tabs={tabs}
-      title={SECONDARY_DOC_TITLE}
+      title={REPOSITORY_SECONDARY_DOCUMENT_TITLE}
       icon="ri:markdown-line"
       emptyMessage="No additional markdown files were found for this repository."
     />
@@ -512,7 +581,7 @@ function DocBody({
               {state.name ?? state.spdx}
             </span>
             {state.spdx && state.spdx !== 'NOASSERTION' && (
-              <span className="rounded-sm border border-border/40 px-1.5 py-0.5 font-mono text-[11px] text-muted-foreground">
+              <span className="rounded-sm border border-border/40 px-1.5 py-0.5 font-mono text-2xs text-muted-foreground">
                 {state.spdx}
               </span>
             )}

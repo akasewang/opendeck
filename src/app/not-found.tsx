@@ -22,7 +22,10 @@ export const metadata: Metadata = {
 
 export default function NotFound() {
   return (
-    <main className="relative min-h-screen overflow-hidden bg-background text-foreground">
+    <main
+      id="main-content"
+      className="relative min-h-dvh overflow-hidden bg-background text-foreground"
+    >
       <SiteHeader />
 
       <div className="relative z-10 w-full px-4 pb-24 pt-16 sm:pt-20">

@@ -1,26 +1,38 @@
 'use client'
 
-import { AnimatePresence, motion } from 'framer-motion'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { useAuth } from '@/features/auth/auth-provider'
-import { ExpandedDetails } from '@/features/repositories/components/repo-expanded-details'
+import { EmptyState } from '@/components/ui/empty-state'
+import { ErrorBanner } from '@/components/ui/error-banner'
+import { ScrollShadow } from '@/components/ui/scroll-shadow'
+import { useAuth } from '@/features/auth/providers/auth-provider'
 import {
-  COLUMN_BOUNDS,
-  clearUrlParam,
-  LOADING_MORE_SKELETON_COUNT,
-  REPOSITORY_COLUMN_BOUNDS,
-  REPOSITORY_COLUMN_DIVIDER,
+  MOTION_DURATION_SECONDS,
+  MOTION_EASING,
+  MOTION_STAGGER_STEP_SECONDS,
+} from '@/config/motion'
+import { ExpandedDetails } from '@/features/repositories/components/repo-expanded-details'
+import { prefetchPersonalRepoStates } from '@/features/repositories/api/personal-repo-cache'
+import { renderCell } from '@/features/repositories/components/table/repository-table-cells'
+import { TableHeadRow } from '@/features/repositories/components/table/repository-table-header'
+import {
   RepoRowSkeleton,
-  renderCell,
-  repoKey,
-  TABLE_CELL_BORDER,
-  TableHeadRow,
-  TableToolbar,
-} from '@/features/repositories/components/table'
-import { COLUMNS, type Repo } from '@/features/repositories/types'
+  RepoTableSkeleton,
+} from '@/features/repositories/components/table/repository-table-skeleton'
+import { TableToolbar } from '@/features/repositories/components/table/repository-table-toolbar'
+import {
+  REPOSITORY_TABLE_COLUMN_BOUNDS,
+  REPOSITORY_TABLE_COLUMNS,
+  REPOSITORY_TABLE_NAME_COLUMN_BOUNDS,
+} from '@/features/repositories/data/repository-table-columns'
+import type { RepositoryListItem } from '@/features/repositories/types/repository'
+import { repoKey } from '@/features/repositories/utils/repository-table-url-state'
 import { cn } from '@/utils/cn'
+import { clearUrlParameter } from '@/lib/browser/url-state'
 
-export { RepoTableSkeleton } from '@/features/repositories/components/table'
+export { RepoTableSkeleton }
+
+const LOADING_MORE_SKELETON_COUNT = 5
 
 export default function RepoTable({
   data,
@@ -28,13 +40,14 @@ export default function RepoTable({
   error,
   query,
   onQueryChange,
-  searchPlaceholder = 'Search by repo / name',
+  searchPlaceholder = 'Search by repository / name',
   onRefresh,
   hasMore,
   isLoadingMore,
   onLoadMore,
+  className,
 }: {
-  data: Repo[]
+  data: RepositoryListItem[]
   isLoading?: boolean
   isLoadingMore?: boolean
   error?: string | null
@@ -44,6 +57,7 @@ export default function RepoTable({
   onRefresh?: () => void
   hasMore?: boolean
   onLoadMore?: () => void
+  className?: string
 }) {
   const [expandedRow, setExpandedRow] = useState<string | null>(null)
   const loadMoreRef = useRef<HTMLDivElement | null>(null)
@@ -55,6 +69,7 @@ export default function RepoTable({
   const pendingAuthMessage = useRef<string | null>(null)
   const authPromptWasOpen = useRef(false)
   const { user, isLoading: isAuthLoading, isAuthOpen, openAuth } = useAuth()
+  const prefersReducedMotion = useReducedMotion()
 
   const expandRow = useCallback((id: string) => {
     setExpandedRow((prev) => (prev === id ? null : id))
@@ -65,7 +80,7 @@ export default function RepoTable({
       id: string,
       message = 'Sign in to expand repository rows and inspect contribution details.',
     ) => {
-      clearUrlParam('repo')
+      clearUrlParameter('repo')
 
       if (!user) {
         pendingExpansion.current = id
@@ -80,7 +95,7 @@ export default function RepoTable({
   )
 
   const toggleRow = (id: string) => {
-    clearUrlParam('repo')
+    clearUrlParameter('repo')
     requestRowExpansion(id)
   }
 
@@ -101,7 +116,7 @@ export default function RepoTable({
 
     const node = loadMoreRef.current
     if (!node) return
-    const scrollRoot = node.closest('[data-dashboard-scroll]')
+    const scrollRoot = scrollNode ?? node.closest('[data-dashboard-scroll]')
 
     const observer = new IntersectionObserver(
       ([entry]) => {
@@ -116,7 +131,7 @@ export default function RepoTable({
     observer.observe(node)
 
     return () => observer.disconnect()
-  }, [error, hasMore, isLoading, isLoadingMore, onLoadMore])
+  }, [error, hasMore, isLoading, isLoadingMore, onLoadMore, scrollNode])
 
   useLayoutEffect(() => {
     if (!scrollNode) return
@@ -130,6 +145,16 @@ export default function RepoTable({
   useEffect(() => {
     if (!user) setExpandedRow(null)
   }, [user])
+
+  useEffect(() => {
+    if (!user) return
+    void prefetchPersonalRepoStates(
+      user.id,
+      data.map(
+        (record) => record.full_name || (record.name?.includes('/') ? record.name : undefined),
+      ),
+    )
+  }, [data, user])
 
   useEffect(() => {
     if (isAuthOpen) {
@@ -175,7 +200,7 @@ export default function RepoTable({
     if (!data || data.length === 0) {
       if (deepLinkLoadStarted.current && !isLoading && !isLoadingMore) {
         deepLinkApplied.current = true
-        clearUrlParam('repo')
+        clearUrlParameter('repo')
       }
       return
     }
@@ -185,25 +210,28 @@ export default function RepoTable({
     )
     if (index === -1) {
       deepLinkApplied.current = true
-      clearUrlParam('repo')
+      clearUrlParameter('repo')
       return
     }
     deepLinkApplied.current = true
     const rowId = repoKey(data[index], index)
     requestRowExpansion(rowId, 'Sign in to expand the linked repository details.')
-    clearUrlParam('repo')
+    clearUrlParameter('repo')
     const frameId = requestAnimationFrame(() => {
       document
         .querySelector(`[data-repo-row="${CSS.escape(rowId)}"]`)
-        ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        ?.scrollIntoView({ behavior: prefersReducedMotion ? 'auto' : 'smooth', block: 'center' })
     })
     return () => cancelAnimationFrame(frameId)
-  }, [data, isLoading, isLoadingMore, requestRowExpansion])
+  }, [data, isLoading, isLoadingMore, prefersReducedMotion, requestRowExpansion])
 
   return (
     <div
       aria-busy={isLoading || isLoadingMore}
-      className="overflow-hidden rounded-xl border border-border/50 bg-background/40 backdrop-blur-sm"
+      className={cn(
+        'flex min-h-0 flex-col overflow-hidden rounded-xl border border-border/50 bg-background/40 backdrop-blur-sm',
+        className,
+      )}
     >
       <div role="status" aria-live="polite" className="sr-only">
         {statusMessage}
@@ -217,13 +245,25 @@ export default function RepoTable({
       />
 
       {isEmpty && !isLoading ? (
-        <div className="py-16 text-center">
-          <div className="font-medium text-base text-muted-foreground">
-            {error ?? 'No repositories found.'}
+        error ? (
+          <div className="p-4">
+            <ErrorBanner message={error} onRetry={onRefresh} />
           </div>
-        </div>
+        ) : (
+          <EmptyState
+            icon="ri:search-line"
+            title="No repositories found"
+            description="Try a different search or adjust the filters to widen your results."
+            className="py-14"
+          />
+        )
       ) : (
-        <div ref={setScrollNode} className="hide-scrollbar w-full overflow-x-auto">
+        <ScrollShadow
+          wrapperClassName="min-h-0 flex-1"
+          className="w-full"
+          viewportRef={setScrollNode}
+          backToTop
+        >
           <table
             aria-label="Repositories"
             className="w-max min-w-full table-auto border-separate border-spacing-0"
@@ -250,6 +290,7 @@ export default function RepoTable({
                           data-repo-row={rowId}
                           aria-expanded={isExpanded}
                           aria-controls={detailsId}
+                          aria-label={`${record.full_name ?? record.name}, ${isExpanded ? 'collapse' : 'expand'} details`}
                           tabIndex={0}
                           onKeyDown={(e) => {
                             if (e.key === 'Enter' || e.key === ' ') {
@@ -260,22 +301,20 @@ export default function RepoTable({
                           initial={{ opacity: 0 }}
                           animate={{ opacity: 1 }}
                           transition={{
-                            duration: 0.25,
-                            delay: Math.min(idx, 12) * 0.025,
-                            ease: 'easeOut',
+                            duration: MOTION_DURATION_SECONDS.moderate,
+                            delay: Math.min(idx, 12) * MOTION_STAGGER_STEP_SECONDS,
+                            ease: MOTION_EASING.standard,
                           }}
-                          className="group cursor-pointer transition-colors hover:bg-muted-hover"
+                          className="group cursor-pointer transition-colors hover:bg-row-hover"
                         >
-                          {COLUMNS.map(({ key }) => {
+                          {REPOSITORY_TABLE_COLUMNS.map(({ key }) => {
                             const className = cn(
-                              'px-3 py-3 text-sm align-middle sm:px-4',
-                              TABLE_CELL_BORDER,
-                              COLUMN_BOUNDS[key],
-                              key !== 'topics' && 'whitespace-nowrap',
+                              'border-b border-b-row-divider px-3 py-3 text-sm align-middle sm:px-4',
+                              REPOSITORY_TABLE_COLUMN_BOUNDS[key],
+                              key !== 'topics' && key !== 'name' && 'whitespace-nowrap',
                               key === 'name' && [
-                                'sticky left-0 z-10 overflow-hidden transition-colors group-hover:bg-row-hover',
-                                REPOSITORY_COLUMN_BOUNDS,
-                                REPOSITORY_COLUMN_DIVIDER,
+                                'sticky left-0 z-10 overflow-hidden border-r border-r-row-divider transition-colors group-hover:bg-row-hover',
+                                REPOSITORY_TABLE_NAME_COLUMN_BOUNDS,
                                 isExpanded ? 'bg-row-hover' : 'bg-background',
                               ],
                             )
@@ -291,15 +330,18 @@ export default function RepoTable({
                           {isExpanded && (
                             <tr>
                               <td
-                                colSpan={COLUMNS.length}
-                                className="border-b border-row-divider bg-background/10 p-0 shadow-inner-sm"
+                                colSpan={REPOSITORY_TABLE_COLUMNS.length}
+                                className="border-b border-b-row-divider bg-background/10 p-0 shadow-inner-sm"
                               >
                                 <motion.div
                                   id={detailsId}
                                   initial={{ height: 0, opacity: 0 }}
                                   animate={{ height: 'auto', opacity: 1 }}
                                   exit={{ height: 0, opacity: 0 }}
-                                  transition={{ duration: 0.2, ease: 'easeInOut' }}
+                                  transition={{
+                                    duration: MOTION_DURATION_SECONDS.quick,
+                                    ease: MOTION_EASING.symmetric,
+                                  }}
                                   className="overflow-hidden"
                                 >
                                   <div className="sticky left-0" style={{ width: panelWidth }}>
@@ -321,11 +363,11 @@ export default function RepoTable({
               )}
             </tbody>
           </table>
-        </div>
-      )}
 
-      {onLoadMore && !isEmpty && (hasMore || isLoadingMore) && (
-        <div ref={loadMoreRef} aria-hidden="true" className="h-px" />
+          {onLoadMore && !isEmpty && (hasMore || isLoadingMore) && (
+            <div ref={loadMoreRef} aria-hidden="true" className="h-px" />
+          )}
+        </ScrollShadow>
       )}
     </div>
   )

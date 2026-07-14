@@ -1,22 +1,27 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import CountPill from '@/components/ui/count-pill'
+import { CheckboxRow } from '@/components/ui/checkbox-row'
+import { Input } from '@/components/ui/input'
 import Select from '@/components/ui/select'
+import PageHeader from '@/features/dashboard/components/page-header'
 import PageShell from '@/features/dashboard/components/page-shell'
 import RepoTable from '@/features/repositories/components/repo-table'
-import { DISCOVER_LANGUAGES } from '@/features/repositories/constants'
-import type { GithubRepoApiItem, Repo } from '@/features/repositories/types'
-import { mapApiRepo, mergeUniqueRepos } from '@/features/repositories/utils'
+import { REPOSITORY_DISCOVER_LANGUAGES } from '@/features/repositories/constants/repository-options'
+import type {
+  RepositoryApiItem,
+  RepositoryListItem,
+} from '@/features/repositories/types/repository'
+import {
+  mapRepositoryApiItem,
+  mergeUniqueRepositories,
+} from '@/features/repositories/utils/repository-list'
+import { parseRepositoryListPayload } from '@/features/repositories/utils/repository-response-validation'
 
-const FILTER_INPUT_CLASS =
-  'rounded-md bg-background text-foreground border border-border/30 px-3 py-2 text-sm transition-all duration-300 ease-out hover:border-border/60 focus:border-border/60 focus:outline-none focus:ring-[0.5px] focus:ring-ring/30'
-const FILTER_CHECKBOX_CLASS =
-  'flex items-center gap-2 rounded-md bg-background text-muted-foreground border border-border/30 px-3 py-2 text-sm transition-colors hover:border-border/60 cursor-pointer'
 const DISCOVER_PAGE_SIZE = 25
 
 export default function DiscoverRepos() {
-  const [repos, setRepos] = useState<Repo[]>([])
+  const [repos, setRepos] = useState<RepositoryListItem[]>([])
   const [language, setLanguage] = useState('')
   const [topic, setTopic] = useState('')
   const [license, setLicense] = useState('')
@@ -77,12 +82,15 @@ export default function DiscoverRepos() {
         })
         if (!res.ok) throw new Error('Failed to fetch')
 
-        const data = await res.json()
-        const items = Array.isArray(data?.items) ? data.items : []
-        const mapped = items.map((repo: GithubRepoApiItem) => mapApiRepo(repo))
+        const payload: unknown = await res.json().catch(() => null)
+        const data = parseRepositoryListPayload(payload)
+        if (!data) throw new Error('Repository API returned an invalid response')
+        const mapped = data.items.map((repository: RepositoryApiItem) =>
+          mapRepositoryApiItem(repository),
+        )
 
-        setRepos((current) => (isFirstPage ? mapped : mergeUniqueRepos(current, mapped)))
-        setTotal(data?.total_count || 0)
+        setRepos((current) => (isFirstPage ? mapped : mergeUniqueRepositories(current, mapped)))
+        setTotal(data.totalCount)
         setError(null)
       } catch {
         if (!controller.signal.aborted) {
@@ -119,97 +127,81 @@ export default function DiscoverRepos() {
 
   const hasMore = repos.length < total
   const languageOptions = useMemo(
-    () => DISCOVER_LANGUAGES.map((lang) => ({ value: lang.toLowerCase(), label: lang })),
+    () => REPOSITORY_DISCOVER_LANGUAGES.map((lang) => ({ value: lang.toLowerCase(), label: lang })),
     [],
   )
 
   const loadMore = useCallback(() => {
-    if (!isLoading && !isLoadingMore && hasMore) setPage((current) => current + 1)
-  }, [hasMore, isLoading, isLoadingMore])
+    if (isLoading || isLoadingMore || !hasMore) return
+    if (error) {
+      setRefreshKey((key) => key + 1)
+      return
+    }
+    setPage((current) => current + 1)
+  }, [error, hasMore, isLoading, isLoadingMore])
 
   return (
-    <PageShell>
-      <div className="mb-6 flex w-full flex-col gap-5">
-        <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
-          <div className="flex flex-col w-full gap-5">
-            <div className="flex flex-col gap-1.5">
-              <div className="flex items-center gap-3">
-                <h1 className="text-balance text-lg sm:text-xl font-medium leading-[100%]">
-                  <span className="text-primary">Discover</span>
-                </h1>
-                <CountPill count={total} />
-              </div>
-              <p className="text-pretty text-[13px] text-muted-foreground max-w-md">
-                Explore and filter the complete index of mirrored open source repositories.
-              </p>
-            </div>
-          </div>
-        </div>
+    <PageShell className="flex h-full min-h-0 flex-col gap-5">
+      <PageHeader
+        title="Discover"
+        description="Explore and filter the complete index of mirrored open source repositories."
+        count={total}
+      />
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-7 gap-3">
-          <Select
-            value={language}
-            onChange={(e) => updateFilter(setLanguage, e.target.value)}
-            options={languageOptions}
-            placeholder="Language"
-            ariaLabel="Filter discover results by language"
-          />
-          <input
-            value={topic}
-            onChange={(e) => updateFilter(setTopic, e.target.value)}
-            placeholder="Topic"
-            aria-label="Filter discover results by topic"
-            className={FILTER_INPUT_CLASS}
-          />
-          <input
-            value={license}
-            onChange={(e) => updateFilter(setLicense, e.target.value)}
-            placeholder="License"
-            aria-label="Filter discover results by license"
-            className={FILTER_INPUT_CLASS}
-          />
-          <input
-            value={minStars}
-            onChange={(e) => updateFilter(setMinStars, e.target.value.replace(/[^0-9]/g, ''))}
-            placeholder="Min stars"
-            aria-label="Filter discover results by minimum stars"
-            inputMode="numeric"
-            className={FILTER_INPUT_CLASS}
-          />
-          <Select
-            value={sort}
-            onChange={(e) => updateFilter(setSort, e.target.value)}
-            options={[
-              { value: 'relevance', label: 'Relevance' },
-              { value: 'contribution', label: 'Fit' },
-              { value: 'stars', label: 'Stars' },
-              { value: 'forks', label: 'Forks' },
-              { value: 'updated', label: 'Updated' },
-              { value: 'recent', label: 'New' },
-            ]}
-            placeholder="Sort"
-            clearable={false}
-            ariaLabel="Sort discover results"
-          />
-          <label className={FILTER_CHECKBOX_CLASS}>
-            <input
-              type="checkbox"
-              checked={activeOnly}
-              onChange={(e) => updateFilter(setActiveOnly, e.target.checked)}
-              className="accent-primary"
-            />
-            Active
-          </label>
-          <label className={FILTER_CHECKBOX_CLASS}>
-            <input
-              type="checkbox"
-              checked={goodFirstIssues}
-              onChange={(e) => updateFilter(setGoodFirstIssues, e.target.checked)}
-              className="accent-primary"
-            />
-            Good first
-          </label>
-        </div>
+      <div className="grid shrink-0 grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-7">
+        <Select
+          value={language}
+          onChange={(e) => updateFilter(setLanguage, e.target.value)}
+          options={languageOptions}
+          placeholder="Language"
+          ariaLabel="Filter discover results by language"
+        />
+        <Input
+          value={topic}
+          onChange={(e) => updateFilter(setTopic, e.target.value)}
+          placeholder="Topic"
+          aria-label="Filter discover results by topic"
+        />
+        <Input
+          value={license}
+          onChange={(e) => updateFilter(setLicense, e.target.value)}
+          placeholder="License"
+          aria-label="Filter discover results by license"
+        />
+        <Input
+          value={minStars}
+          onChange={(e) => updateFilter(setMinStars, e.target.value.replace(/[^0-9]/g, ''))}
+          placeholder="Min stars"
+          aria-label="Filter discover results by minimum stars"
+          inputMode="numeric"
+        />
+        <Select
+          value={sort}
+          onChange={(e) => updateFilter(setSort, e.target.value)}
+          options={[
+            { value: 'relevance', label: 'Relevance' },
+            { value: 'contribution', label: 'Fit' },
+            { value: 'stars', label: 'Stars' },
+            { value: 'forks', label: 'Forks' },
+            { value: 'updated', label: 'Updated' },
+            { value: 'recent', label: 'New' },
+          ]}
+          placeholder="Sort"
+          clearable={false}
+          ariaLabel="Sort discover results"
+        />
+        <CheckboxRow
+          checked={activeOnly}
+          onChange={(checked) => updateFilter(setActiveOnly, checked)}
+        >
+          Active
+        </CheckboxRow>
+        <CheckboxRow
+          checked={goodFirstIssues}
+          onChange={(checked) => updateFilter(setGoodFirstIssues, checked)}
+        >
+          Good first
+        </CheckboxRow>
       </div>
 
       <RepoTable
@@ -226,6 +218,7 @@ export default function DiscoverRepos() {
         hasMore={hasMore}
         isLoadingMore={isLoadingMore}
         onLoadMore={loadMore}
+        className="min-h-0 flex-1"
       />
     </PageShell>
   )

@@ -2,43 +2,47 @@
 
 import { Icon } from '@iconify/react'
 import { motion } from 'framer-motion'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { cardVariants } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
 import Select from '@/components/ui/select'
 import { toast } from '@/components/ui/toast'
-import { useAuth } from '@/features/auth/auth-provider'
-import { sectionItem } from '@/features/repositories/components/repo-detail-motion'
-import type { Repo } from '@/features/repositories/types'
+import { API_ROUTES, withQuery } from '@/config/routes'
+import { useAuth } from '@/features/auth/providers/auth-provider'
+import { sectionItem } from '@/features/repositories/motion/repo-detail-motion'
+import {
+  getCachedPersonalRepoState,
+  hasCachedPersonalRepoState,
+  isPersonalRepoPayload,
+  setCachedPersonalRepoState,
+  type PersonalRepoPayload,
+} from '@/features/repositories/api/personal-repo-cache'
+import type { RepositoryListItem } from '@/features/repositories/types/repository'
+import { isRecord } from '@/lib/api/input-normalization'
+import { apiErrorMessage } from '@/lib/api/errors'
 import { cn } from '@/utils/cn'
 
-type PersonalRepoPayload = {
-  state: {
-    savedAt: string | null
-    hiddenAt: string | null
-    dismissedAt: string | null
-    reviewedAt: string | null
-    pipelineStage: string
-    note: string | null
-    alertEnabled: boolean
-  }
-  following: boolean
-  collections: Array<{
-    id: string
-    name: string
-    containsRepo: boolean
-  }>
-}
-
-export function PersonalRepoPanel({ record, fullName }: { record: Repo; fullName?: string }) {
+export function PersonalRepoPanel({
+  record,
+  fullName,
+}: {
+  record: RepositoryListItem
+  fullName?: string
+}) {
   const { user } = useAuth()
+  const userId = user?.id
   const [payload, setPayload] = useState<PersonalRepoPayload | null>(null)
   const [note, setNote] = useState('')
   const [isSaving, setIsSaving] = useState(false)
   const [isLoadingState, setIsLoadingState] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const stateRequestRef = useRef(0)
   const repoId = record.id
 
   const loadState = useCallback(async () => {
-    if (!user || !fullName) {
+    const requestId = stateRequestRef.current + 1
+    stateRequestRef.current = requestId
+    if (!userId || !fullName) {
       setPayload(null)
       setNote('')
       setIsLoadingState(false)
@@ -46,26 +50,40 @@ export function PersonalRepoPanel({ record, fullName }: { record: Repo; fullName
       return
     }
 
-    setIsLoadingState(true)
+    const cached = getCachedPersonalRepoState(userId, fullName)
+    if (cached) {
+      setPayload(cached)
+      setNote(cached.state.note ?? '')
+    } else {
+      setIsLoadingState(true)
+    }
     setLoadError(null)
     try {
-      const response = await fetch(`/api/account/repo?fullName=${encodeURIComponent(fullName)}`, {
+      const response = await fetch(withQuery(API_ROUTES.account.repository, { fullName }), {
         credentials: 'include',
         cache: 'no-store',
       })
-      const data = await response.json().catch(() => null)
-      if (!response.ok) throw new Error(data?.error || 'Unable to load repository state.')
+      const data: unknown = await response.json().catch(() => null)
+      if (!response.ok) throw new Error(apiErrorMessage(data, 'Unable to load repository state.'))
+      if (!isRecord(data) || !isPersonalRepoPayload(data.item)) {
+        throw new Error('Account API returned an invalid repository state.')
+      }
+      if (stateRequestRef.current !== requestId) return
+      setCachedPersonalRepoState(userId, fullName, data.item)
       setPayload(data.item)
       setNote(data.item?.state?.note ?? '')
       setLoadError(null)
     } catch (error) {
-      setPayload(null)
-      setNote('')
-      setLoadError(error instanceof Error ? error.message : 'Unable to load repository state.')
+      if (stateRequestRef.current !== requestId) return
+      if (!hasCachedPersonalRepoState(userId, fullName)) {
+        setPayload(null)
+        setNote('')
+        setLoadError(error instanceof Error ? error.message : 'Unable to load repository state.')
+      }
     } finally {
-      setIsLoadingState(false)
+      if (stateRequestRef.current === requestId) setIsLoadingState(false)
     }
-  }, [fullName, user])
+  }, [fullName, userId])
 
   useEffect(() => {
     void loadState()
@@ -73,7 +91,7 @@ export function PersonalRepoPanel({ record, fullName }: { record: Repo; fullName
 
   useEffect(() => {
     if (!user || !fullName) return
-    void fetch('/api/account/recent', {
+    void fetch(API_ROUTES.account.recent, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       credentials: 'include',
@@ -84,16 +102,21 @@ export function PersonalRepoPanel({ record, fullName }: { record: Repo; fullName
   if (!user || !fullName) return null
 
   const update = async (patch: Record<string, unknown>, message = 'Repository updated') => {
+    if (!userId) return
     setIsSaving(true)
     try {
-      const response = await fetch('/api/account/repo', {
+      const response = await fetch(API_ROUTES.account.repository, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ repoId, fullName, ...patch }),
       })
-      const data = await response.json().catch(() => null)
-      if (!response.ok) throw new Error(data?.error || 'Unable to update repository.')
+      const data: unknown = await response.json().catch(() => null)
+      if (!response.ok) throw new Error(apiErrorMessage(data, 'Unable to update repository.'))
+      if (!isRecord(data) || !isPersonalRepoPayload(data.item)) {
+        throw new Error('Account API returned an invalid repository state.')
+      }
+      setCachedPersonalRepoState(userId, fullName, data.item)
       setPayload(data.item)
       setNote(data.item?.state?.note ?? '')
       toast(message)
@@ -107,9 +130,10 @@ export function PersonalRepoPanel({ record, fullName }: { record: Repo; fullName
   }
 
   const updateCollection = async (collectionId: string, containsRepo: boolean) => {
+    if (!userId) return
     setIsSaving(true)
     try {
-      const response = await fetch('/api/account/collections/item', {
+      const response = await fetch(API_ROUTES.account.collectionItem, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         credentials: 'include',
@@ -120,8 +144,12 @@ export function PersonalRepoPanel({ record, fullName }: { record: Repo; fullName
           action: containsRepo ? 'remove' : 'add',
         }),
       })
-      const data = await response.json().catch(() => null)
-      if (!response.ok) throw new Error(data?.error || 'Unable to update collection.')
+      const data: unknown = await response.json().catch(() => null)
+      if (!response.ok) throw new Error(apiErrorMessage(data, 'Unable to update collection.'))
+      if (!isRecord(data) || !isPersonalRepoPayload(data.item)) {
+        throw new Error('Account API returned an invalid repository state.')
+      }
+      setCachedPersonalRepoState(userId, fullName, data.item)
       setPayload(data.item)
       toast(containsRepo ? 'Removed from collection' : 'Added to collection')
     } catch (error) {
@@ -138,9 +166,10 @@ export function PersonalRepoPanel({ record, fullName }: { record: Repo; fullName
   const isFollowing = Boolean(payload?.following)
 
   const toggleRepositoryFollow = async () => {
+    if (!userId) return
     setIsSaving(true)
     try {
-      const response = await fetch('/api/account/follows', {
+      const response = await fetch(API_ROUTES.account.follows, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         credentials: 'include',
@@ -152,11 +181,18 @@ export function PersonalRepoPanel({ record, fullName }: { record: Repo; fullName
           following: !isFollowing,
         }),
       })
-      const data = await response.json().catch(() => null)
-      if (!response.ok) throw new Error(data?.error || 'Unable to update follow state.')
-      setPayload((current) =>
-        current ? { ...current, following: Boolean(data.following) } : current,
-      )
+      const data: unknown = await response.json().catch(() => null)
+      if (!response.ok) throw new Error(apiErrorMessage(data, 'Unable to update follow state.'))
+      if (!isRecord(data) || typeof data.following !== 'boolean') {
+        throw new Error('Account API returned an invalid follow response.')
+      }
+      const following = data.following
+      setPayload((current) => {
+        if (!current) return current
+        const next = { ...current, following }
+        setCachedPersonalRepoState(userId, fullName, next)
+        return next
+      })
       toast(data.following ? 'Repository followed' : 'Repository unfollowed')
     } catch (error) {
       toast(error instanceof Error ? error.message : 'Unable to update follow state', {
@@ -168,15 +204,12 @@ export function PersonalRepoPanel({ record, fullName }: { record: Repo; fullName
   }
 
   return (
-    <motion.div
-      variants={sectionItem}
-      className="rounded-lg border border-border/50 bg-background/35 p-3"
-    >
+    <motion.div variants={sectionItem} className={cardVariants({ className: 'p-4' })}>
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0">
-          <h4 className="text-balance text-xs font-semibold text-muted-foreground">My Deck</h4>
+          <h2 className="text-balance text-xs font-semibold text-muted-foreground">My Deck</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Save this repo, track your contribution stage and keep private notes.
+            Save this repository, track your contribution stage and keep private notes.
           </p>
           {loadError && (
             <p className="mt-2 text-xs text-destructive">
@@ -258,14 +291,15 @@ export function PersonalRepoPanel({ record, fullName }: { record: Repo; fullName
         </div>
         <label className="space-y-1.5">
           <span className="text-xs font-medium text-muted-foreground">Private note</span>
-          <input
+          <Input
             value={note}
             disabled={isSaving || isLoadingState || Boolean(loadError)}
             onClick={(event) => event.stopPropagation()}
             onChange={(event) => setNote(event.target.value)}
-            onBlur={() => void update({ note }, 'Note saved')}
-            placeholder="Why this repo matters"
-            className="h-9 w-full rounded-md border border-border/40 bg-background px-2 text-sm text-foreground"
+            onBlur={() => {
+              if (note !== (state?.note ?? '')) void update({ note }, 'Note saved')
+            }}
+            placeholder="Why this repository matters"
           />
         </label>
         <div className="flex flex-wrap items-end gap-2">

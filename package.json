@@ -1,7 +1,7 @@
 {
   "name": "opendeck",
   "author": "akashdewangan",
-  "license": "MIT",
+  "license": "CC-BY-NC-SA-4.0",
   "version": "0.1.0",
   "private": true,
   "scripts": {

@@ -2,14 +2,24 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { useDebounce } from 'use-debounce'
-import type { GithubRepoApiItem, Repo } from '@/features/repositories/types'
-import { mapApiRepo, mergeUniqueRepos } from '@/features/repositories/utils'
+import type {
+  RepositoryApiItem,
+  RepositoryListItem,
+} from '@/features/repositories/types/repository'
+import {
+  mapRepositoryApiItem,
+  mergeUniqueRepositories,
+} from '@/features/repositories/utils/repository-list'
+import { parseRepositoryListPayload } from '@/features/repositories/utils/repository-response-validation'
 
 const REPO_FEED_PAGE_SIZE = 25
 
 type LanguageOption = { value: string; label: string }
 
-function mergeLanguageOptions(current: LanguageOption[], repos: Repo[]): LanguageOption[] {
+function mergeLanguageOptions(
+  current: LanguageOption[],
+  repos: RepositoryListItem[],
+): LanguageOption[] {
   const byValue = new Map(current.map((option) => [option.value, option]))
   let added = false
 
@@ -27,7 +37,7 @@ function mergeLanguageOptions(current: LanguageOption[], repos: Repo[]): Languag
 }
 
 export function useRepoFeed(endpoint: string, descriptionFallback?: string) {
-  const [results, setResults] = useState<Repo[]>([])
+  const [results, setResults] = useState<RepositoryListItem[]>([])
   const [languageOptions, setLanguageOptions] = useState<LanguageOption[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
@@ -68,14 +78,17 @@ export function useRepoFeed(endpoint: string, descriptionFallback?: string) {
         })
         if (!res.ok) throw new Error('Failed to fetch')
 
-        const data = await res.json()
-        const items = Array.isArray(data?.items) ? data.items : []
-        const mapped = items.map((repo: GithubRepoApiItem) => mapApiRepo(repo, descriptionFallback))
+        const payload: unknown = await res.json().catch(() => null)
+        const data = parseRepositoryListPayload(payload)
+        if (!data) throw new Error('Repository API returned an invalid response')
+        const mapped = data.items.map((repository: RepositoryApiItem) =>
+          mapRepositoryApiItem(repository, descriptionFallback),
+        )
         if (controller.signal.aborted) return
 
-        setResults((current) => (isFirstPage ? mapped : mergeUniqueRepos(current, mapped)))
+        setResults((current) => (isFirstPage ? mapped : mergeUniqueRepositories(current, mapped)))
         setLanguageOptions((current) => mergeLanguageOptions(current, mapped))
-        setTotal(data?.total_count || 0)
+        setTotal(data.totalCount)
         setError(null)
       } catch {
         if (controller.signal.aborted) return
@@ -101,8 +114,13 @@ export function useRepoFeed(endpoint: string, descriptionFallback?: string) {
   const hasMore = results.length < total
 
   const loadMore = useCallback(() => {
-    if (!isLoading && !isLoadingMore && hasMore) setPage((current) => current + 1)
-  }, [hasMore, isLoading, isLoadingMore])
+    if (isLoading || isLoadingMore || !hasMore) return
+    if (error) {
+      setRefreshKey((key) => key + 1)
+      return
+    }
+    setPage((current) => current + 1)
+  }, [error, hasMore, isLoading, isLoadingMore])
 
   const refresh = useCallback(() => {
     setPage(1)

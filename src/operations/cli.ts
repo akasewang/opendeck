@@ -8,13 +8,13 @@ async function main() {
   const [area, command, ...args] = process.argv.slice(2)
 
   if (area === 'ingest') {
-    const { runIngestCommand } = await import('@/operations/commands/ingest')
+    const { runIngestCommand } = await import('@/operations/commands/ingest-repositories')
     await runIngestCommand(command ? [command, ...args] : args)
     return
   }
 
   if (area === 'db' && command === 'migrate') {
-    const { runMigrateCommand } = await import('@/operations/commands/migrate')
+    const { runMigrateCommand } = await import('@/operations/commands/migrate-database')
     await runMigrateCommand()
     return
   }

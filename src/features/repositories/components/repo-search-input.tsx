@@ -5,20 +5,25 @@ import { AnimatePresence, motion } from 'framer-motion'
 import Image from 'next/image'
 import { type KeyboardEvent, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { Kbd } from '@/components/ui/kbd'
+import { ScrollShadow } from '@/components/ui/scroll-shadow'
 import { Skeleton } from '@/components/ui/skeleton'
-import type { GithubRepoApiItem } from '@/features/repositories/types'
-import { formatNumber } from '@/features/repositories/utils'
+import { API_ROUTES, withQuery } from '@/config/routes'
+import { MOTION_SPRING } from '@/config/motion'
+import type { RepositoryApiItem } from '@/features/repositories/types/repository'
+import { parseRepositoryListPayload } from '@/features/repositories/utils/repository-response-validation'
 import { cn } from '@/utils/cn'
+import { formatNumber } from '@/utils/format-number'
 
 type RepoSearchInputProps = {
-  onPick: (fullName: string, repo?: GithubRepoApiItem) => void
+  onPick: (fullName: string, repo?: RepositoryApiItem) => void | Promise<void>
   exclude?: string[]
   placeholder?: string
+  ariaLabel?: string
   disabled?: boolean
   className?: string
 }
 
-function repoFullName(repo: GithubRepoApiItem) {
+function repoFullName(repo: RepositoryApiItem) {
   return repo.full_name || repo.name
 }
 
@@ -40,13 +45,15 @@ export function RepoSearchInput({
   onPick,
   exclude = [],
   placeholder = 'Search repositories...',
+  ariaLabel = 'Search repositories',
   disabled = false,
   className,
 }: RepoSearchInputProps) {
   const [query, setQuery] = useState('')
-  const [suggestions, setSuggestions] = useState<GithubRepoApiItem[]>([])
+  const [suggestions, setSuggestions] = useState<RepositoryApiItem[]>([])
   const [isOpen, setIsOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [isPicking, setIsPicking] = useState(false)
   const [activeIndex, setActiveIndex] = useState(-1)
   const containerRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -83,12 +90,15 @@ export function RepoSearchInput({
       setIsLoading(true)
       try {
         const response = await fetch(
-          `/api/search?q=${encodeURIComponent(trimmed)}&per_page=6&sort=relevance`,
+          withQuery(API_ROUTES.search, { q: trimmed, per_page: 6, sort: 'relevance' }),
           { signal: controller.signal },
         )
-        const payload = await response.json().catch(() => null)
+        const payload: unknown = await response.json().catch(() => null)
+        if (!response.ok) throw new Error('Unable to search repositories.')
+        const parsed = parseRepositoryListPayload(payload)
+        if (!parsed) throw new Error('Repository API returned an invalid response')
         if (!controller.signal.aborted) {
-          setSuggestions(payload?.items ?? [])
+          setSuggestions(parsed.items)
           setActiveIndex(-1)
         }
       } catch {
@@ -118,11 +128,19 @@ export function RepoSearchInput({
     [excludedFullNames, suggestions],
   )
 
-  const pick = (fullName: string, repo?: GithubRepoApiItem) => {
-    onPick(fullName, repo)
-    setQuery('')
-    setSuggestions([])
-    setActiveIndex(-1)
+  const pick = async (fullName: string, repo?: RepositoryApiItem) => {
+    if (isPicking) return
+    setIsPicking(true)
+    try {
+      await onPick(fullName, repo)
+      setQuery('')
+      setSuggestions([])
+      setActiveIndex(-1)
+    } catch {
+      // Async consumers are responsible for presenting their feature-specific error.
+    } finally {
+      setIsPicking(false)
+    }
   }
 
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
@@ -149,11 +167,11 @@ export function RepoSearchInput({
       event.preventDefault()
       const active = activeIndex >= 0 ? visibleSuggestions[activeIndex] : visibleSuggestions[0]
       if (active) {
-        pick(repoFullName(active), active)
+        void pick(repoFullName(active), active)
         return
       }
       const raw = query.trim()
-      if (raw.includes('/')) pick(raw)
+      if (raw.includes('/')) void pick(raw)
     }
   }
 
@@ -172,22 +190,38 @@ export function RepoSearchInput({
         onFocus={() => setIsOpen(true)}
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
-        disabled={disabled}
+        disabled={disabled || isPicking}
         role="combobox"
+        aria-label={ariaLabel}
         aria-expanded={showDropdown}
         aria-controls={listboxId}
         aria-autocomplete="list"
-        className="peer h-10 w-full rounded-lg border border-border/40 bg-background py-0 pl-10 pr-10 text-sm leading-none text-foreground shadow-sm transition-all placeholder:text-muted-foreground hover:border-border/70 focus:border-border/80 focus:shadow-md focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+        aria-activedescendant={
+          activeIndex >= 0 && activeIndex < visibleSuggestions.length
+            ? `${listboxId}-option-${activeIndex}`
+            : undefined
+        }
+        aria-busy={isLoading || isPicking || undefined}
+        className="peer h-10 w-full rounded-lg border border-border/40 bg-background py-0 pl-10 pr-10 text-sm leading-none text-foreground shadow-sm transition-[border-color,box-shadow] placeholder:text-muted-foreground hover:border-border/70 focus:border-border/80 focus:shadow-md focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
       />
       <span className="pointer-events-none absolute inset-y-0 left-3.5 flex items-center text-muted-foreground transition-colors peer-focus:text-primary">
         <Icon icon="ri:search-line" className="h-4 w-4" />
       </span>
       <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
-        {isLoading ? (
+        {isLoading || isPicking ? (
           <Icon icon="ri:loader-4-line" className="h-4 w-4 animate-spin text-muted-foreground" />
         ) : (
           query.length === 0 && <Kbd className="hidden -translate-y-[0.75px] sm:inline-flex">/</Kbd>
         )}
+      </span>
+      <span role="status" aria-live="polite" className="sr-only">
+        {isPicking
+          ? 'Adding repository'
+          : isLoading
+            ? 'Searching repositories'
+            : showDropdown
+              ? `${visibleSuggestions.length} repository ${visibleSuggestions.length === 1 ? 'result' : 'results'} available`
+              : ''}
       </span>
       <AnimatePresence>
         {showDropdown && (
@@ -197,8 +231,8 @@ export function RepoSearchInput({
             initial={{ opacity: 0, y: -6, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -4, scale: 0.98 }}
-            transition={{ type: 'spring', stiffness: 420, damping: 34 }}
-            className="absolute inset-x-0 top-[calc(100%+0.5rem)] z-40 overflow-hidden rounded-lg border border-border/40 bg-card/95 shadow-xl backdrop-blur-md"
+            transition={MOTION_SPRING.search}
+            className="absolute inset-x-0 top-[calc(100%+0.5rem)] z-40 overflow-hidden rounded-lg border border-border/40 bg-sidebar/95 shadow-xl backdrop-blur-md"
           >
             {showSkeletons ? (
               <div className="space-y-1 p-1.5">
@@ -220,68 +254,74 @@ export function RepoSearchInput({
                   : 'No matching repositories in the index.'}
               </div>
             ) : (
-              <ul className="max-h-80 overflow-y-auto p-1.5">
-                {visibleSuggestions.map((repo, index) => {
-                  const fullName = repoFullName(repo)
-                  const avatar = repo.owner?.avatar_url
-                  return (
-                    <li key={repo.opendeck_id ?? fullName}>
-                      <button
-                        type="button"
-                        role="option"
-                        aria-selected={index === activeIndex}
-                        onMouseEnter={() => setActiveIndex(index)}
-                        onClick={() => pick(fullName, repo)}
-                        className={cn(
-                          'flex w-full items-center gap-3 rounded-md px-2.5 py-2 text-left transition-colors',
-                          index === activeIndex ? 'bg-primary/10' : 'hover:bg-muted-hover',
-                        )}
-                      >
-                        {avatar ? (
-                          <Image
-                            src={`${avatar}${avatar.includes('?') ? '&' : '?'}s=24`}
-                            alt=""
-                            width={24}
-                            height={24}
-                            className="shrink-0 rounded-md ring-1 ring-border/50"
-                          />
-                        ) : (
-                          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-muted/60">
-                            <Icon
-                              icon="ri:git-repository-line"
-                              className="h-3.5 w-3.5 text-muted-foreground/70"
+              <ScrollShadow className="max-h-80 p-1.5">
+                <ul role="presentation">
+                  {visibleSuggestions.map((repo, index) => {
+                    const fullName = repoFullName(repo)
+                    const avatar = repo.owner?.avatar_url
+                    return (
+                      <li key={repo.opendeck_id ?? fullName} role="presentation">
+                        <button
+                          id={`${listboxId}-option-${index}`}
+                          type="button"
+                          role="option"
+                          aria-selected={index === activeIndex}
+                          tabIndex={-1}
+                          onMouseDown={(event) => event.preventDefault()}
+                          onMouseEnter={() => setActiveIndex(index)}
+                          disabled={isPicking}
+                          onClick={() => void pick(fullName, repo)}
+                          className={cn(
+                            'flex w-full items-center gap-3 rounded-md px-2.5 py-2 text-left transition-colors',
+                            index === activeIndex ? 'bg-primary/10' : 'hover:bg-muted-hover',
+                          )}
+                        >
+                          {avatar ? (
+                            <Image
+                              src={`${avatar}${avatar.includes('?') ? '&' : '?'}s=24`}
+                              alt=""
+                              width={24}
+                              height={24}
+                              className="shrink-0 rounded-md ring-1 ring-border/50"
                             />
-                          </span>
-                        )}
-                        <span className="min-w-0 flex-1">
-                          <span className="block truncate text-sm leading-snug">
-                            <HighlightedName text={fullName} query={query} />
-                          </span>
-                          {repo.description && (
-                            <span className="mt-0.5 block truncate text-xs text-muted-foreground">
-                              {repo.description}
+                          ) : (
+                            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-muted/60">
+                              <Icon
+                                icon="ri:git-repository-line"
+                                className="h-3.5 w-3.5 text-muted-foreground/70"
+                              />
                             </span>
                           )}
-                        </span>
-                        <span className="flex shrink-0 flex-col items-end gap-0.5">
-                          <span className="inline-flex items-center gap-1 font-mono text-xs tabular-nums text-muted-foreground">
-                            <Icon icon="ri:star-line" className="h-3 w-3" />
-                            {formatNumber(repo.stargazers_count ?? 0)}
-                          </span>
-                          {repo.language && (
-                            <span className="hidden text-[11px] text-muted-foreground/70 sm:inline">
-                              {repo.language}
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-sm leading-snug">
+                              <HighlightedName text={fullName} query={query} />
                             </span>
-                          )}
-                        </span>
-                      </button>
-                    </li>
-                  )
-                })}
-              </ul>
+                            {repo.description && (
+                              <span className="mt-0.5 block truncate text-xs text-muted-foreground">
+                                {repo.description}
+                              </span>
+                            )}
+                          </span>
+                          <span className="flex shrink-0 flex-col items-end gap-0.5">
+                            <span className="inline-flex items-center gap-1 font-mono text-xs tabular-nums text-muted-foreground">
+                              <Icon icon="ri:star-line" className="h-3 w-3" />
+                              {formatNumber(repo.stargazers_count ?? 0)}
+                            </span>
+                            {repo.language && (
+                              <span className="hidden text-2xs text-muted-foreground/70 sm:inline">
+                                {repo.language}
+                              </span>
+                            )}
+                          </span>
+                        </button>
+                      </li>
+                    )
+                  })}
+                </ul>
+              </ScrollShadow>
             )}
             {!showSkeletons && visibleSuggestions.length > 0 && (
-              <div className="hidden items-center gap-3 border-t border-border/40 bg-background/40 px-3 py-1.5 text-[11px] text-muted-foreground sm:flex">
+              <div className="hidden items-center gap-3 border-t border-border/40 bg-background/40 px-3 py-1.5 text-2xs text-muted-foreground sm:flex">
                 <span className="inline-flex items-center gap-1">
                   <Kbd>↑</Kbd>
                   <Kbd>↓</Kbd>

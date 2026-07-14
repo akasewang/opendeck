@@ -14,13 +14,38 @@ const PAIRED_BLOCKED_TAG_RE = new RegExp(
 )
 const BLOCKED_TAG_RE = new RegExp(`<\\s*\\/?\\s*(?:${BLOCKED_TAGS})\\b[^>]*>`, 'gi')
 const EVENT_HANDLER_ATTR_RE = /\s+on[a-z]+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi
-const STRIPPED_ATTR_RE =
-  /\s+(?:style|srcdoc|formaction)\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi
-const URL_ATTR_RE =
-  /\s+(href|src|xlink:href|action|poster)\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi
+const STRIPPED_ATTR_RE = /\s+(?:style|srcdoc|formaction)\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi
+const URL_ATTR_RE = /\s+(href|src|xlink:href|action|poster)\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi
+
+const NAMED_PROTOCOL_CHARACTER_REFERENCES: Record<string, string> = {
+  colon: ':',
+  newline: '\n',
+  tab: '\t',
+}
+
+function decodeProtocolCharacterReferences(value: string) {
+  return value
+    .replace(/&#(?:x([0-9a-f]+)|(\d+));?/gi, (reference, hex: string, decimal: string) => {
+      const codePoint = Number.parseInt(hex || decimal, hex ? 16 : 10)
+      if (
+        !Number.isSafeInteger(codePoint) ||
+        codePoint < 0 ||
+        codePoint > 0x10ffff ||
+        (codePoint >= 0xd800 && codePoint <= 0xdfff)
+      ) {
+        return reference
+      }
+      return String.fromCodePoint(codePoint)
+    })
+    .replace(/&(colon|newline|tab);?/gi, (_reference, name: string) => {
+      return NAMED_PROTOCOL_CHARACTER_REFERENCES[name.toLowerCase()] ?? ''
+    })
+}
 
 function normalizeProtocol(value: string) {
-  return value.replace(/^[\s"'`]+|[\s"'`]+$/g, '').replace(/[\u0000-\u001F\u007F\s]+/g, '')
+  return decodeProtocolCharacterReferences(value)
+    .replace(/^[\s"'`]+|[\s"'`]+$/g, '')
+    .replace(/[\u0000-\u001F\u007F\s]+/g, '')
 }
 
 function hasUnsafeProtocol(value: string) {

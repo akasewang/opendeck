@@ -1,8 +1,8 @@
 import type { Metadata } from 'next'
-import { APP_CONFIG } from '@/config/app'
+import { APP_CONFIG } from '@/config/application'
 import Hero from '@/features/landing/components/hero'
 import type { ScatterItem } from '@/features/landing/components/repo-scatter'
-import { listOrganizations } from '@/lib/repositories'
+import { listOrganizations } from '@/features/organizations/services/organization-query-service'
 import { createPageMetadata } from '@/lib/seo/metadata'
 
 export const dynamic = 'force-dynamic'

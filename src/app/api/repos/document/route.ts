@@ -1,4 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server'
+import { getUserFromRequest } from '@/features/auth/services/authentication-service'
+import { REPOSITORY_FULL_NAME_PATTERN } from '@/features/repositories/constants/repository-validation'
+import { getRepoByFullName } from '@/features/repositories/services/repository-query-service'
 import {
   baseName,
   DOC_PATTERNS,
@@ -15,18 +18,28 @@ import {
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-const FULLNAME_RE = /^[\w.-]+\/[\w.-]+$/
-
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl
   const fullName = searchParams.get('fullName')?.trim()
-  if (!fullName || !FULLNAME_RE.test(fullName)) {
+  if (!fullName || !REPOSITORY_FULL_NAME_PATTERN.test(fullName)) {
     return NextResponse.json({ error: 'Invalid repository name.' }, { status: 400 })
+  }
+
+  const user = await getUserFromRequest(request)
+  if (!user) {
+    return NextResponse.json(
+      { error: 'Unauthorized' },
+      { status: 401, headers: { 'Cache-Control': 'no-store' } },
+    )
   }
 
   const doc = searchParams.get('doc')?.trim()
 
   try {
+    if (!(await getRepoByFullName(fullName))) {
+      return NextResponse.json({ error: 'Repository not found.' }, { status: 404 })
+    }
+
     if (!doc) {
       return NextResponse.json(await getRepositoryDocumentManifest(fullName))
     }

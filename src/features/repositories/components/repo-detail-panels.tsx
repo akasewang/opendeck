@@ -2,28 +2,39 @@
 
 import { Icon } from '@iconify/react'
 import Image from 'next/image'
+import { useState } from 'react'
+import { Button, buttonVariants } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { TextArea } from '@/components/ui/text-area'
+import { ScrollShadow } from '@/components/ui/scroll-shadow'
 import { Skeleton } from '@/components/ui/skeleton'
+import { StatusPill } from '@/components/ui/status-pill'
 import { SimpleTag } from '@/components/ui/tag'
 import { toast } from '@/components/ui/toast'
+import { API_ROUTES } from '@/config/routes'
 import {
   AboutRow,
-  COLUMN_LABEL_CLASS,
-  CountBadge,
-  FLOATING_PANEL_LINK_CLASS,
-  INPUT_CLASS,
-  PANEL_ACTION_CLASS,
+  FLOATING_LINK_CLASS,
   PanelEmpty,
   PanelHeader,
-  PRIMARY_BUTTON_CLASS,
-  TEXTAREA_CLASS,
-} from '@/features/repositories/components/repo-detail-primitives'
-import type { Contributor, JournalPayload, RepoInsight } from '@/features/repositories/types'
-import { formatDate, formatNumber, getLanguageTagStyle } from '@/features/repositories/utils'
+} from '@/features/repositories/components/repo-detail-states'
+import type {
+  RepositoryContributor,
+  RepositoryInsight,
+  RepositoryJournalPayload,
+} from '@/features/repositories/types/repository'
+import { formatDate, getLanguageTagStyle } from '@/features/repositories/utils/repository-display'
+import { isRepositoryJournalPayload } from '@/features/repositories/utils/repository-response-validation'
 import { cn } from '@/utils/cn'
+import { apiErrorMessage } from '@/lib/api/errors'
+import { formatNumber } from '@/utils/format-number'
 
-type Repo = RepoInsight['repo']
-type Issue = RepoInsight['issues'][number]
-type TimelinePoint = RepoInsight['timeline'][number]
+const COLUMN_LABEL_CLASS =
+  'shrink-0 border-b border-b-row-divider bg-sidebar px-4 py-2 text-2xs font-semibold uppercase tracking-normal text-muted-foreground/70'
+
+type RepositoryDetailRepo = RepositoryInsight['repo']
+type Issue = RepositoryInsight['issues'][number]
+type TimelinePoint = RepositoryInsight['timeline'][number]
 
 export function RecommendedIssuesPanel({
   issues,
@@ -36,37 +47,37 @@ export function RecommendedIssuesPanel({
 }) {
   return (
     <>
-      <div className="flex h-11 shrink-0 items-center justify-between gap-3 border-b border-border/40 px-4">
-        <h2 className="flex min-w-0 items-center gap-2 text-sm font-semibold text-foreground">
-          <Icon icon="ri:bug-line" className="h-4 w-4 shrink-0 text-muted-foreground/70" />
-          <span className="truncate">Recommended issues</span>
-          {issues.length > 0 && <CountBadge value={issues.length} />}
-        </h2>
-        {repoHtmlUrl && (
-          <div className="ml-auto flex shrink-0 items-center gap-2">
-            <a
-              href={`${repoHtmlUrl}/issues`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={PANEL_ACTION_CLASS}
-            >
-              <Icon icon="ri:record-circle-line" className="h-3.5 w-3.5" />
-              Issues
-            </a>
-            {hasGoodFirstIssues && (
+      <PanelHeader
+        icon="ri:bug-line"
+        title="Recommended issues"
+        count={issues.length}
+        right={
+          repoHtmlUrl && (
+            <div className="flex shrink-0 items-center gap-2">
               <a
-                href={`${repoHtmlUrl}/contribute`}
+                href={`${repoHtmlUrl}/issues`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className={PANEL_ACTION_CLASS}
+                className={buttonVariants({ size: 'sm' })}
               >
-                <Icon icon="ri:hand-heart-line" className="h-3.5 w-3.5" />
-                Good first issues
+                <Icon icon="ri:record-circle-line" className="h-3.5 w-3.5" />
+                Issues
               </a>
-            )}
-          </div>
-        )}
-      </div>
+              {hasGoodFirstIssues && (
+                <a
+                  href={`${repoHtmlUrl}/contribute`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={buttonVariants({ size: 'sm' })}
+                >
+                  <Icon icon="ri:hand-heart-line" className="h-3.5 w-3.5" />
+                  Good first issues
+                </a>
+              )}
+            </div>
+          )
+        }
+      />
       {issues.length === 0 ? (
         <PanelEmpty>
           Issues appear here once the repository has been synced with approachable labels.
@@ -77,7 +88,11 @@ export function RecommendedIssuesPanel({
             <span className="min-w-0 flex-1">Issue</span>
             <span className="shrink-0">Fit</span>
           </div>
-          <div className="min-h-0 flex-1 divide-y divide-border/30 overflow-y-auto">
+          <ScrollShadow
+            wrapperClassName="min-h-0 flex-1"
+            className="divide-y divide-border/30"
+            backToTop
+          >
             {issues.map((issue) => (
               <a
                 key={issue.id}
@@ -102,7 +117,7 @@ export function RecommendedIssuesPanel({
                 </span>
               </a>
             ))}
-          </div>
+          </ScrollShadow>
         </div>
       )}
     </>
@@ -114,7 +129,7 @@ export function AboutPanel({
   license,
   topics,
 }: {
-  repo: Repo
+  repo: RepositoryDetailRepo
   license?: string | null
   topics: string[]
 }) {
@@ -124,7 +139,7 @@ export function AboutPanel({
   return (
     <>
       <PanelHeader icon="ri:information-line" title="About" />
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      <ScrollShadow wrapperClassName="min-h-0 flex-1" backToTop>
         <div className="divide-y divide-border/30">
           <AboutRow
             label="Language"
@@ -157,7 +172,7 @@ export function AboutPanel({
             </div>
           </div>
         )}
-      </div>
+      </ScrollShadow>
     </>
   )
 }
@@ -177,7 +192,7 @@ export function RepoJournalPanel({
   onReloadJournal,
 }: {
   fullName: string
-  entries: JournalPayload['entries']
+  entries: RepositoryJournalPayload['entries']
   journalBody: string
   journalStatus: string
   journalIssue: string
@@ -185,23 +200,24 @@ export function RepoJournalPanel({
   onBodyChange: (value: string) => void
   onStatusChange: (value: string) => void
   onIssueChange: (value: string) => void
-  onJournalSaved: (payload: JournalPayload) => void
+  onJournalSaved: (payload: RepositoryJournalPayload) => void
   onJournalError: (message: string | null) => void
   onReloadJournal: () => Promise<void>
 }) {
+  const [isSaving, setIsSaving] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+
   return (
     <>
-      <PanelHeader
-        icon="ri:quill-pen-line"
-        title="Private journal"
-        right={entries.length > 0 ? <CountBadge value={entries.length} /> : undefined}
-      />
+      <PanelHeader icon="ri:quill-pen-line" title="Private journal" count={entries.length} />
       <form
         className="shrink-0 space-y-2.5 border-b border-border/40 p-4"
         onSubmit={async (event) => {
           event.preventDefault()
+          if (isSaving) return
+          setIsSaving(true)
           try {
-            const response = await fetch('/api/account/journal', {
+            const response = await fetch(API_ROUTES.account.journal, {
               method: 'POST',
               headers: { 'content-type': 'application/json' },
               credentials: 'include',
@@ -209,11 +225,16 @@ export function RepoJournalPanel({
                 fullName,
                 body: journalBody,
                 status: journalStatus,
-                issueNumber: journalIssue ? Number.parseInt(journalIssue, 10) : undefined,
+                issueNumber: journalIssue || undefined,
               }),
             })
-            const payload = await response.json().catch(() => null)
-            if (!response.ok) throw new Error(payload?.error || 'Unable to save journal entry.')
+            const payload: unknown = await response.json().catch(() => null)
+            if (!response.ok) {
+              throw new Error(apiErrorMessage(payload, 'Unable to save journal entry.'))
+            }
+            if (!isRepositoryJournalPayload(payload)) {
+              throw new Error('Journal API returned an invalid response.')
+            }
             onJournalSaved(payload)
             onJournalError(null)
             onBodyChange('')
@@ -223,35 +244,36 @@ export function RepoJournalPanel({
             toast(error instanceof Error ? error.message : 'Unable to save journal entry', {
               tone: 'error',
             })
+          } finally {
+            setIsSaving(false)
           }
         }}
       >
-        <textarea
+        <TextArea
           value={journalBody}
           onChange={(event) => onBodyChange(event.target.value)}
           placeholder="What happened? Progress, blockers, decisions..."
           aria-label="Journal note"
-          className={TEXTAREA_CLASS}
         />
         <div className="flex flex-wrap items-center gap-2">
-          <input
+          <Input
             value={journalStatus}
             onChange={(event) => onStatusChange(event.target.value)}
             placeholder="Status"
             aria-label="Journal status"
-            className={cn(INPUT_CLASS, 'w-32')}
+            className="w-32"
           />
-          <input
+          <Input
             value={journalIssue}
             onChange={(event) => onIssueChange(event.target.value)}
             placeholder="Issue #"
             inputMode="numeric"
             aria-label="Issue number"
-            className={cn(INPUT_CLASS, 'w-24')}
+            className="w-24"
           />
-          <button type="submit" className={cn(PRIMARY_BUTTON_CLASS, 'ml-auto')}>
-            Save note
-          </button>
+          <Button type="submit" variant="primary" className="ml-auto" disabled={isSaving}>
+            {isSaving ? 'Saving...' : 'Save note'}
+          </Button>
         </div>
       </form>
       {journalError ? (
@@ -261,14 +283,18 @@ export function RepoJournalPanel({
           No entries yet. Keep private notes about your progress on this repository.
         </PanelEmpty>
       ) : (
-        <div className="min-h-0 flex-1 divide-y divide-border/30 overflow-y-auto">
+        <ScrollShadow
+          wrapperClassName="min-h-0 flex-1"
+          className="divide-y divide-border/30"
+          backToTop
+        >
           {entries.map((entry) => (
             <div key={entry.id} className="px-4 py-3">
               <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
                 <span className="inline-flex items-center gap-1.5">
-                  <span className="rounded-sm border border-border/40 px-1.5 py-0.5 font-medium capitalize">
+                  <StatusPill tone="neutral" size="sm">
                     {entry.status}
-                  </span>
+                  </StatusPill>
                   {entry.issueNumber ? `#${entry.issueNumber}` : ''}
                 </span>
                 <span className="inline-flex items-center gap-1.5">
@@ -276,9 +302,12 @@ export function RepoJournalPanel({
                   <button
                     type="button"
                     aria-label="Delete journal entry"
+                    disabled={deletingId !== null}
                     onClick={async () => {
+                      if (deletingId) return
+                      setDeletingId(entry.id)
                       try {
-                        const response = await fetch('/api/account/journal/delete', {
+                        const response = await fetch(API_ROUTES.account.journalDelete, {
                           method: 'POST',
                           headers: { 'content-type': 'application/json' },
                           credentials: 'include',
@@ -291,6 +320,8 @@ export function RepoJournalPanel({
                         toast(error instanceof Error ? error.message : 'Unable to delete entry', {
                           tone: 'error',
                         })
+                      } finally {
+                        setDeletingId(null)
                       }
                     }}
                     className="flex h-5 w-5 items-center justify-center rounded-sm text-muted-foreground/60 transition-colors hover:bg-muted-hover hover:text-destructive"
@@ -302,7 +333,7 @@ export function RepoJournalPanel({
               <p className="mt-1.5 text-pretty text-sm text-foreground">{entry.body}</p>
             </div>
           ))}
-        </div>
+        </ScrollShadow>
       )}
     </>
   )
@@ -315,7 +346,7 @@ export function ContributorsPanel({
   error,
   contributorsUrl,
 }: {
-  contributors: Contributor[]
+  contributors: RepositoryContributor[]
   totalCount: number
   isLoading: boolean
   error: string | null
@@ -323,11 +354,7 @@ export function ContributorsPanel({
 }) {
   return (
     <>
-      <PanelHeader
-        icon="ri:team-line"
-        title="Contributors"
-        right={totalCount > 0 ? <CountBadge value={totalCount} /> : undefined}
-      />
+      <PanelHeader icon="ri:team-line" title="Contributors" count={totalCount} />
       {isLoading ? (
         <div className="min-h-0 flex-1 divide-y divide-border/30 overflow-hidden pb-12">
           {Array.from({ length: 5 }, (_, index) => (
@@ -343,11 +370,15 @@ export function ContributorsPanel({
         <PanelEmpty>No contributor list has been captured yet.</PanelEmpty>
       ) : (
         <div className="flex min-h-0 flex-1 flex-col pb-12">
-          <div className="grid grid-cols-[1fr_auto] gap-3 border-b border-border/30 px-4 py-2 text-[11px] font-medium uppercase tracking-normal text-muted-foreground">
+          <div className={cn(COLUMN_LABEL_CLASS, 'grid grid-cols-[1fr_auto] gap-3')}>
             <span>Contributor</span>
             <span>Contributions</span>
           </div>
-          <div className="min-h-0 flex-1 divide-y divide-border/30 overflow-y-auto">
+          <ScrollShadow
+            wrapperClassName="min-h-0 flex-1"
+            className="divide-y divide-border/30"
+            backToTop
+          >
             {contributors.map((contributor, index) => (
               <a
                 key={`${contributor.login}-${contributor.htmlUrl}-${index}`}
@@ -383,7 +414,7 @@ export function ContributorsPanel({
                 </span>
               </a>
             ))}
-          </div>
+          </ScrollShadow>
         </div>
       )}
       {contributorsUrl && (
@@ -391,7 +422,7 @@ export function ContributorsPanel({
           href={contributorsUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className={FLOATING_PANEL_LINK_CLASS}
+          className={FLOATING_LINK_CLASS}
         >
           <Icon icon="ri:external-link-line" className="h-3.5 w-3.5" />
           View contributors
@@ -404,7 +435,7 @@ export function ContributorsPanel({
 export function HealthTimelinePanel({ timeline }: { timeline: TimelinePoint[] }) {
   return (
     <>
-      <PanelHeader icon="ri:line-chart-line" title="Health timeline" />
+      <PanelHeader icon="ri:line-chart-line" title="Health timeline" count={timeline.length} />
       {timeline.length === 0 ? (
         <PanelEmpty>No snapshots captured yet.</PanelEmpty>
       ) : (
@@ -420,7 +451,11 @@ export function HealthTimelinePanel({ timeline }: { timeline: TimelinePoint[] })
             <span className="justify-self-end">Forks</span>
             <span className="justify-self-end">Issues</span>
           </div>
-          <div className="min-h-0 flex-1 divide-y divide-border/30 overflow-y-auto">
+          <ScrollShadow
+            wrapperClassName="min-h-0 flex-1"
+            className="divide-y divide-border/30"
+            backToTop
+          >
             {timeline.map((point) => (
               <div
                 key={point.capturedAt}
@@ -443,7 +478,7 @@ export function HealthTimelinePanel({ timeline }: { timeline: TimelinePoint[] })
                 </span>
               </div>
             ))}
-          </div>
+          </ScrollShadow>
         </div>
       )}
     </>

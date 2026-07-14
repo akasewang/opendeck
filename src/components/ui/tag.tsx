@@ -12,7 +12,7 @@ export function SimpleTag({ className, ...props }: ComponentProps<'span'>) {
       data-slot="tag"
       className={cn(
         tagBase,
-        'border-border/80 bg-background px-2 py-1 font-mono text-[11px] text-muted-foreground',
+        'border-border/80 bg-background px-2 py-1 font-mono text-2xs text-muted-foreground',
         className,
       )}
       {...props}

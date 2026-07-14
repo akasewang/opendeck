@@ -3,21 +3,58 @@
 import { Icon } from '@iconify/react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
+import { StatusPill } from '@/components/ui/status-pill'
+import { appRoute } from '@/config/routes'
 import { Metric } from '@/features/repositories/components/repo-detail-metric'
+import { PersonalRepoPanel } from '@/features/repositories/components/repo-personal-panel'
 import {
+  expandedSectionStagger,
   groupStagger,
   sectionItem,
-  sectionStagger,
-} from '@/features/repositories/components/repo-detail-motion'
-import { PersonalRepoPanel } from '@/features/repositories/components/repo-personal-panel'
-import type { Repo } from '@/features/repositories/types'
+} from '@/features/repositories/motion/repo-detail-motion'
+import type { RepositoryListItem } from '@/features/repositories/types/repository'
 import {
-  formatNumber,
   formatRelativeTime,
   getLanguageTagStyle,
-} from '@/features/repositories/utils'
+} from '@/features/repositories/utils/repository-display'
+import { cn } from '@/utils/cn'
+import { formatNumber } from '@/utils/format-number'
 
-export function ExpandedDetails({ record }: { record: Repo }) {
+function DetailLink({
+  href,
+  icon,
+  label,
+  external = false,
+}: {
+  href: string
+  icon: string
+  label: string
+  external?: boolean
+}) {
+  return (
+    <Link
+      href={href}
+      onClick={(event) => event.stopPropagation()}
+      {...(external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+      className="group inline-flex items-center gap-1.5 text-sm font-medium text-foreground transition-colors hover:text-primary"
+    >
+      <Icon
+        icon={icon}
+        className="h-4 w-4 text-muted-foreground/70 transition-colors group-hover:text-primary/70"
+      />
+      {label}
+      <Icon
+        icon={external ? 'ri:external-link-line' : 'ri:arrow-right-line'}
+        className={cn(
+          'h-4 w-4 transition-[color,translate] duration-200 ease-out',
+          !external && 'group-hover:translate-x-1',
+        )}
+      />
+    </Link>
+  )
+}
+
+export function ExpandedDetails({ record }: { record: RepositoryListItem }) {
   const fullName = record.full_name || (record.name?.includes('/') ? record.name : undefined)
   const lastActive = formatRelativeTime(record.pushed_at || record.updated_at)
   const homepage = record.homepage && /^https?:\/\//.test(record.homepage) ? record.homepage : null
@@ -27,16 +64,16 @@ export function ExpandedDetails({ record }: { record: Repo }) {
 
   return (
     <motion.div
-      className="space-y-4 p-4 md:p-5"
+      className="space-y-5 p-4 md:p-5"
       initial="hidden"
       animate="show"
-      variants={sectionStagger}
+      variants={expandedSectionStagger}
     >
       <motion.div variants={sectionItem}>
         {record.is_archived && (
-          <span className="mb-2 inline-block rounded-sm border border-destructive/20 bg-destructive/10 px-2 py-0.5 text-[10px] font-bold text-destructive">
+          <StatusPill tone="destructive" size="sm" className="mb-2">
             Archived
-          </span>
+          </StatusPill>
         )}
         <p className="text-pretty text-sm leading-relaxed text-foreground/90">
           {record.description || 'No description available for this repository.'}
@@ -97,61 +134,21 @@ export function ExpandedDetails({ record }: { record: Repo }) {
 
       {fullName && (
         <motion.div variants={sectionItem} className="flex flex-wrap items-center gap-x-6 gap-y-2">
-          <Link
-            href={`/dashboard/repos/${fullName}`}
-            onClick={(e) => e.stopPropagation()}
-            className="group inline-flex items-center gap-1.5 text-sm font-medium text-foreground transition-colors hover:text-primary"
-          >
-            <Icon icon="ri:dashboard-line" className="h-4 w-4 text-muted-foreground/70" />
-            Open repository detail
-            <Icon
-              icon="ri:arrow-right-line"
-              className="h-4 w-4 transition-transform group-hover:translate-x-0.5"
-            />
-          </Link>
-          <Link
-            href={`/dashboard/compare?repos=${encodeURIComponent(fullName)}`}
-            onClick={(e) => e.stopPropagation()}
-            className="group inline-flex items-center gap-1.5 text-sm font-medium text-foreground transition-colors hover:text-primary"
-          >
-            <Icon icon="ri:scales-3-line" className="h-4 w-4 text-muted-foreground/70" />
-            Compare with others
-            <Icon
-              icon="ri:arrow-right-line"
-              className="h-4 w-4 transition-transform group-hover:translate-x-0.5"
-            />
-          </Link>
+          <DetailLink
+            href={appRoute.repository(fullName)}
+            icon="ri:dashboard-line"
+            label="Open repository detail"
+          />
+          <DetailLink
+            href={appRoute.compareRepositories([fullName])}
+            icon="ri:scales-3-line"
+            label="Compare with others"
+          />
           {record.html_url && (
-            <Link
-              href={record.html_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={(e) => e.stopPropagation()}
-              className="group inline-flex items-center gap-1.5 text-sm font-medium text-foreground transition-colors hover:text-primary"
-            >
-              <Icon icon="ri:github-fill" className="h-4 w-4 text-muted-foreground/70" />
-              GitHub
-              <Icon
-                icon="ri:external-link-line"
-                className="h-4 w-4 transition-transform group-hover:translate-x-0.5"
-              />
-            </Link>
+            <DetailLink href={record.html_url} icon="ri:github-fill" label="GitHub" external />
           )}
           {homepage && (
-            <Link
-              href={homepage}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={(e) => e.stopPropagation()}
-              className="group inline-flex items-center gap-1.5 text-sm font-medium text-foreground transition-colors hover:text-primary"
-            >
-              <Icon icon="ri:global-line" className="h-4 w-4 text-muted-foreground/70" />
-              Website
-              <Icon
-                icon="ri:external-link-line"
-                className="h-4 w-4 transition-transform group-hover:translate-x-0.5"
-              />
-            </Link>
+            <DetailLink href={homepage} icon="ri:global-line" label="Website" external />
           )}
         </motion.div>
       )}

@@ -3,6 +3,7 @@ import {
   parkGithubToken,
   updateGithubTokenRateLimit,
 } from '@/lib/github/tokens'
+import { isRecord } from '@/lib/api/input-normalization'
 
 type GithubFetchOptions = {
   method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
@@ -13,9 +14,9 @@ type GithubFetchOptions = {
   timeoutMs?: number
 }
 
-type GithubFetchResult<T> = {
+type GithubFetchResult = {
   status: number
-  data: T | null
+  data: unknown
   etag: string | null
   rateLimitRemaining: number | null
 }
@@ -37,8 +38,8 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 function getBackoffMs(attempt: number, response: Response, bodyText: string) {
   const retryAfter = response.headers.get('retry-after')
   if (retryAfter) {
-    const seconds = Number.parseInt(retryAfter, 10)
-    if (Number.isFinite(seconds)) return seconds * 1000
+    const seconds = /^\d+$/.test(retryAfter.trim()) ? Number(retryAfter) : Number.NaN
+    if (Number.isSafeInteger(seconds)) return seconds * 1000
 
     const retryAt = Date.parse(retryAfter)
     if (Number.isFinite(retryAt)) return Math.max(retryAt - Date.now(), 1000)
@@ -51,8 +52,9 @@ function getBackoffMs(attempt: number, response: Response, bodyText: string) {
     bodyText.toLowerCase().includes('secondary')
 
   if (isRateLimit && reset) {
-    const resetAt = Number.parseInt(reset, 10) * 1000
-    if (Number.isFinite(resetAt)) return Math.max(resetAt - Date.now(), 1000)
+    const resetSeconds = /^\d+$/.test(reset.trim()) ? Number(reset) : Number.NaN
+    const resetAt = resetSeconds * 1000
+    if (Number.isSafeInteger(resetSeconds)) return Math.max(resetAt - Date.now(), 1000)
   }
 
   const jitter = Math.floor(Math.random() * 250)
@@ -101,10 +103,10 @@ export async function githubFetch(
   }
 }
 
-export async function githubFetchJson<T>(
+export async function githubFetchJson(
   pathOrUrl: string,
   options: GithubFetchOptions = {},
-): Promise<GithubFetchResult<T>> {
+): Promise<GithubFetchResult> {
   const retries = options.retries ?? 3
   const url = pathOrUrl.startsWith('http') ? pathOrUrl : `${GITHUB_API_URL}${pathOrUrl}`
   let lastError: Error | undefined
@@ -159,7 +161,12 @@ export async function githubFetchJson<T>(
     updateGithubTokenRateLimit(token, response.headers)
 
     const rateLimitRemaining = response.headers.get('x-ratelimit-remaining')
-    const remaining = rateLimitRemaining ? Number.parseInt(rateLimitRemaining, 10) : null
+    const parsedRemaining =
+      rateLimitRemaining && /^\d+$/.test(rateLimitRemaining.trim())
+        ? Number(rateLimitRemaining)
+        : null
+    const remaining =
+      parsedRemaining !== null && Number.isSafeInteger(parsedRemaining) ? parsedRemaining : null
 
     if (response.status === 304) {
       return {
@@ -195,7 +202,7 @@ export async function githubFetchJson<T>(
       throw lastError
     }
 
-    const data = (await response.json()) as T
+    const data: unknown = await response.json()
     return {
       status: response.status,
       data,
@@ -207,18 +214,20 @@ export async function githubFetchJson<T>(
   throw lastError || new GithubClientError('GitHub request failed', 500)
 }
 
-export async function githubGraphql<T>(query: string, variables: Record<string, unknown> = {}) {
-  const result = await githubFetchJson<{ data?: T; errors?: unknown[] }>('/graphql', {
+export async function githubGraphql(query: string, variables: Record<string, unknown> = {}) {
+  const result = await githubFetchJson('/graphql', {
     method: 'POST',
     body: { query, variables },
   })
 
-  if (result.data?.errors?.length) {
-    throw new GithubClientError(JSON.stringify(result.data.errors), result.status)
+  const payload = isRecord(result.data) ? result.data : null
+  const errors = Array.isArray(payload?.errors) ? payload.errors : []
+  if (errors.length > 0) {
+    throw new GithubClientError(JSON.stringify(errors), result.status)
   }
 
   return {
     ...result,
-    data: result.data?.data ?? null,
+    data: payload?.data ?? null,
   }
 }

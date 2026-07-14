@@ -1,5 +1,5 @@
-import { renderOpenDeckBrandImage } from '@/lib/seo/brand-image'
-import { OG_CONTENT_TYPE, OG_SIZE } from '@/lib/seo/og'
+import { renderOpenDeckBrandImage } from '@/lib/seo/brand-open-graph-image'
+import { OG_CONTENT_TYPE, OG_SIZE } from '@/lib/seo/open-graph'
 
 export const alt = 'Shared collection on OpenDeck'
 export const size = OG_SIZE

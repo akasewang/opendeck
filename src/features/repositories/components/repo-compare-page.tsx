@@ -3,18 +3,27 @@
 import { Icon } from '@iconify/react'
 import { AnimatePresence, motion } from 'framer-motion'
 import Image from 'next/image'
-import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react'
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Card } from '@/components/ui/card'
 import { EmptyState } from '@/components/ui/empty-state'
+import { ErrorBanner } from '@/components/ui/error-banner'
 import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from '@/components/ui/toast'
+import { API_ROUTES, APP_ROUTES, appRoute, withQuery } from '@/config/routes'
+import { MOTION_SPRING } from '@/config/motion'
+import PageHeader from '@/features/dashboard/components/page-header'
 import PageShell from '@/features/dashboard/components/page-shell'
 import { RepoSearchInput } from '@/features/repositories/components/repo-search-input'
-import { formatNumber, formatRelativeTime } from '@/features/repositories/utils'
+import { formatRelativeTime } from '@/features/repositories/utils/repository-display'
+import { isRepositoryInsight } from '@/features/repositories/utils/repository-response-validation'
+import { isRecord } from '@/lib/api/input-normalization'
+import { apiErrorMessage } from '@/lib/api/errors'
 import { cn } from '@/utils/cn'
+import { formatNumber } from '@/utils/format-number'
 
 type CompareItem = {
   repo: {
-    full_name?: string
+    full_name: string
     name?: string
     description?: string | null
     html_url?: string
@@ -45,6 +54,17 @@ function overallScore(item: CompareItem) {
   return (item.repo.contribution_score ?? 0) * 0.6 + item.responsivenessScore * 0.4
 }
 
+function isCompareItem(value: unknown): value is CompareItem {
+  if (!isRecord(value)) return false
+  const { setupDifficulty, responsivenessScore } = value
+  return (
+    isRepositoryInsight(value) &&
+    typeof setupDifficulty === 'string' &&
+    typeof responsivenessScore === 'number' &&
+    Number.isFinite(responsivenessScore)
+  )
+}
+
 function winnersByMax(values: Array<number | null>) {
   const present = values.filter((value): value is number => value !== null)
   if (present.length < 2) return new Set<number>()
@@ -59,8 +79,11 @@ export default function ComparePage() {
   const [items, setItems] = useState<CompareItem[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const compareRequestRef = useRef(0)
 
   const runCompare = useCallback(async (repos: string[]) => {
+    const requestId = compareRequestRef.current + 1
+    compareRequestRef.current = requestId
     if (repos.length === 0) {
       setItems([])
       setError(null)
@@ -70,18 +93,29 @@ export default function ComparePage() {
     setError(null)
     try {
       const response = await fetch(
-        `/api/repos/compare?repos=${encodeURIComponent(repos.join(','))}`,
+        withQuery(API_ROUTES.repositories.compare, { repos: repos.join(',') }),
         { cache: 'no-store' },
       )
-      const payload = await response.json().catch(() => null)
-      if (!response.ok) throw new Error(payload?.error || 'Unable to compare repositories.')
-      setItems(payload?.items ?? [])
+      const payload: unknown = await response.json().catch(() => null)
+      if (!response.ok) {
+        throw new Error(apiErrorMessage(payload, 'Unable to compare repositories.'))
+      }
+      if (
+        !isRecord(payload) ||
+        !Array.isArray(payload.items) ||
+        !payload.items.every(isCompareItem)
+      ) {
+        throw new Error('Repository API returned an invalid response.')
+      }
+      if (compareRequestRef.current !== requestId) return
+      setItems(payload.items)
       setError(null)
     } catch (nextError) {
+      if (compareRequestRef.current !== requestId) return
       setItems([])
       setError(nextError instanceof Error ? nextError.message : 'Unable to compare repositories.')
     } finally {
-      setIsLoading(false)
+      if (compareRequestRef.current === requestId) setIsLoading(false)
     }
   }, [])
 
@@ -98,7 +132,7 @@ export default function ComparePage() {
   const applySelection = (repos: string[]) => {
     setSelected(repos)
     const search = repos.length > 0 ? `?repos=${encodeURIComponent(repos.join(','))}` : ''
-    window.history.replaceState(null, '', `/dashboard/compare${search}`)
+    window.history.replaceState(null, '', `${APP_ROUTES.dashboardCompare}${search}`)
     void runCompare(repos)
   }
 
@@ -144,9 +178,11 @@ export default function ComparePage() {
       const count = item.qualitySignals?.contributorCount
       return typeof count === 'number' && count > 0 ? count : null
     })
-    const pushed = items.map((item) =>
-      item.repo.pushed_at ? new Date(item.repo.pushed_at).getTime() : null,
-    )
+    const pushed = items.map((item) => {
+      if (!item.repo.pushed_at) return null
+      const timestamp = new Date(item.repo.pushed_at).getTime()
+      return Number.isFinite(timestamp) ? timestamp : null
+    })
     const setup = items.map((item) => SETUP_RANK[item.setupDifficulty] ?? 1)
     const overall = items.map(overallScore)
 
@@ -276,7 +312,7 @@ export default function ComparePage() {
       label: 'License',
       cells: items.map((item) => (
         <span key={item.repo.full_name} className="text-foreground">
-          {item.repo.license?.key?.toUpperCase() || item.repo.license?.name || 'lawless wasteland'}
+          {item.repo.license?.key?.toUpperCase() || item.repo.license?.name || 'No license'}
         </span>
       )),
     },
@@ -284,13 +320,11 @@ export default function ComparePage() {
 
   return (
     <PageShell className="space-y-5">
-      <div>
-        <h1 className="text-balance text-lg font-medium text-primary">Compare repositories</h1>
-        <p className="mt-1 max-w-2xl text-pretty text-sm text-muted-foreground">
-          Search and pick up to {MAX_REPOS} repositories. The leading value in each row is marked in
-          green.
-        </p>
-      </div>
+      <PageHeader
+        title="Compare repositories"
+        description={`Search and pick up to ${MAX_REPOS} repositories. The leading value in each row is marked in green.`}
+        count={items.length}
+      />
 
       <div className="space-y-3">
         <RepoSearchInput
@@ -314,7 +348,7 @@ export default function ComparePage() {
                   initial={{ opacity: 0, scale: 0.85 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.85 }}
-                  transition={{ type: 'spring', stiffness: 420, damping: 30 }}
+                  transition={MOTION_SPRING.firm}
                   className="inline-flex items-center gap-1.5 rounded-md border border-border/50 bg-background/40 py-1 pl-2.5 pr-1 text-sm text-foreground"
                 >
                   {name}
@@ -354,11 +388,7 @@ export default function ComparePage() {
           <Skeleton className="h-96" />
         </div>
       ) : error ? (
-        <EmptyState
-          icon="ri:error-warning-line"
-          title="Comparison unavailable"
-          description={error}
-        />
+        <ErrorBanner message={error} onRetry={() => void runCompare(selected)} />
       ) : items.length === 0 ? (
         <EmptyState
           icon="ri:scales-3-line"
@@ -373,11 +403,11 @@ export default function ComparePage() {
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+          transition={MOTION_SPRING.standard}
           className="space-y-3"
         >
           {best?.repo.full_name && (
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-border/50 bg-background/40 px-4 py-3">
+            <Card className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3">
               <Icon icon="ri:award-line" className="h-4 w-4 shrink-0 text-success" />
               <span className="text-sm text-foreground">
                 <span className="font-semibold">{best.repo.full_name}</span> looks like the best
@@ -386,7 +416,7 @@ export default function ComparePage() {
               {bestHighlights.length > 0 && (
                 <span className="text-xs text-muted-foreground">{bestHighlights.join(' · ')}</span>
               )}
-            </div>
+            </Card>
           )}
 
           <div className="overflow-x-auto rounded-lg border border-border/50">
@@ -394,6 +424,7 @@ export default function ComparePage() {
               className="w-full table-fixed border-separate border-spacing-0 text-sm"
               style={{ minWidth: `${10 + items.length * 13}rem` }}
             >
+              <caption className="sr-only">Repository comparison</caption>
               <colgroup>
                 <col className="w-40" />
                 {items.map((item) => (
@@ -402,13 +433,20 @@ export default function ComparePage() {
               </colgroup>
               <thead>
                 <tr>
-                  <th className="sticky left-0 z-10 border-b border-border/50 bg-background" />
+                  <th
+                    scope="col"
+                    className="sticky left-0 z-10 border-b border-border/50 bg-background"
+                  >
+                    <span className="sr-only">Metric</span>
+                  </th>
                   {items.map((item, index) => {
                     const avatar = item.repo.owner?.avatar_url
+                    const fullName = item.repo.full_name ?? item.repo.name
                     const isBest = comparing && overallWinners.has(index)
                     return (
                       <th
-                        key={item.repo.full_name}
+                        key={fullName}
+                        scope="col"
                         className={cn(
                           'border-b border-border/50 p-4 text-left align-top',
                           index > 0 && 'border-l border-l-row-divider',
@@ -427,13 +465,13 @@ export default function ComparePage() {
                             )}
                             <div className="min-w-0">
                               <a
-                                href={`/dashboard/repos/${item.repo.full_name}`}
+                                href={appRoute.repository(fullName)}
                                 className="block truncate text-sm font-semibold text-foreground transition-colors hover:text-primary"
-                                title={item.repo.full_name}
+                                title={fullName}
                               >
-                                {item.repo.full_name}
+                                {fullName}
                               </a>
-                              <div className="mt-0.5 flex items-center gap-2 text-[11px] font-normal text-muted-foreground">
+                              <div className="mt-0.5 flex items-center gap-2 text-2xs font-normal text-muted-foreground">
                                 {item.repo.language && <span>{item.repo.language}</span>}
                                 {item.repo.is_archived && (
                                   <span className="text-destructive">Archived</span>
@@ -481,7 +519,7 @@ export default function ComparePage() {
                       scope="row"
                       className={cn(
                         'sticky left-0 z-10 bg-background px-4 py-2.5 text-left text-xs font-medium text-muted-foreground',
-                        rowIndex < metricRows.length - 1 && 'border-b border-row-divider',
+                        rowIndex < metricRows.length - 1 && 'border-b border-b-row-divider',
                       )}
                     >
                       {row.label}
@@ -491,7 +529,7 @@ export default function ComparePage() {
                         key={`${row.key}-${items[index].repo.full_name ?? index}`}
                         className={cn(
                           'px-4 py-2.5 align-middle',
-                          rowIndex < metricRows.length - 1 && 'border-b border-row-divider',
+                          rowIndex < metricRows.length - 1 && 'border-b border-b-row-divider',
                           index > 0 && 'border-l border-l-row-divider',
                         )}
                       >

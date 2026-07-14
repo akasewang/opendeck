@@ -1,6 +1,7 @@
 'use client'
 
 import Image from 'next/image'
+import { useReducedMotion } from 'framer-motion'
 import { useEffect, useRef } from 'react'
 
 export type ScatterItem = {
@@ -39,6 +40,7 @@ const SETTLE_EPS = 0.3
 export default function RepoScatter({ items }: { items: ScatterItem[] }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const nodeRefs = useRef<(HTMLDivElement | null)[]>([])
+  const prefersReducedMotion = useReducedMotion()
 
   useEffect(() => {
     const container = containerRef.current
@@ -57,7 +59,7 @@ export default function RepoScatter({ items }: { items: ScatterItem[] }) {
 
     setNodeSize()
 
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    if (prefersReducedMotion) {
       const renderStatic = () => {
         const w = container.clientWidth
         const h = container.clientHeight
@@ -314,7 +316,7 @@ export default function RepoScatter({ items }: { items: ScatterItem[] }) {
       document.removeEventListener('pointerleave', onLeave)
       observer.disconnect()
     }
-  }, [items])
+  }, [items, prefersReducedMotion])
 
   if (!items.length) return null
 
@@ -331,7 +333,7 @@ export default function RepoScatter({ items }: { items: ScatterItem[] }) {
             nodeRefs.current[i] = el
           }}
           title={item.name}
-          className="absolute left-0 top-0 rounded-xl bg-background will-change-transform [box-shadow:0_0_0_1px_rgba(0,0,0,0.55),0_10px_20px_-6px_rgba(0,0,0,0.7),0_3px_6px_-3px_rgba(0,0,0,0.6)]"
+          className="absolute left-0 top-0 rounded-lg bg-background shadow-repository-tile will-change-transform"
         >
           <Image
             src={item.imgUrl}
@@ -341,7 +343,7 @@ export default function RepoScatter({ items }: { items: ScatterItem[] }) {
             draggable={false}
             className="absolute inset-0 h-full w-full rounded-xl object-cover"
           />
-          <div className="pointer-events-none absolute inset-0 rounded-xl bg-gradient-to-b from-white/20 via-transparent to-black/25 [box-shadow:inset_0_1.5px_0_0_rgba(255,255,255,0.45),inset_0_-3px_6px_-1px_rgba(0,0,0,0.55),inset_0_0_0_1px_rgba(255,255,255,0.12)]" />
+          <div className="pointer-events-none absolute inset-0 rounded-lg bg-gradient-to-b from-white/20 via-transparent to-black/25 shadow-repository-tile-overlay" />
         </div>
       ))}
     </div>

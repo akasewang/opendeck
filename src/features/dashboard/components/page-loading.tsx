@@ -1,21 +1,17 @@
-import { Skeleton } from '@/components/ui/skeleton'
+import { PageHeaderSkeleton } from '@/features/dashboard/components/page-header'
 import { RepoTableSkeleton } from '@/features/repositories/components/repo-table'
 
 export default function DashboardLoading() {
   return (
-    <section className="relative z-10 min-h-full w-full p-4 sm:px-6 sm:py-5 md:pl-0">
-      <div className="mb-6 flex flex-col items-start justify-between gap-4 sm:flex-row sm:flex-wrap">
-        <div className="flex min-w-0 flex-col gap-1.5">
-          <div className="flex items-center gap-3">
-            <Skeleton className="h-6 w-28" />
-            <Skeleton className="h-5 w-9 rounded-sm" />
-          </div>
-          <Skeleton className="h-3.5 w-80 max-w-full" />
-        </div>
-        <Skeleton className="h-9 w-full rounded-md sm:w-44" />
-      </div>
-
-      <RepoTableSkeleton />
+    <section
+      role="status"
+      aria-live="polite"
+      aria-busy="true"
+      className="relative z-10 flex h-full min-h-0 w-full flex-col gap-5 p-4 sm:px-6 sm:py-5 md:pl-0"
+    >
+      <span className="sr-only">Loading dashboard</span>
+      <PageHeaderSkeleton actionClassName="h-9 w-full rounded-md sm:w-44" />
+      <RepoTableSkeleton className="min-h-0 flex-1" />
     </section>
   )
 }

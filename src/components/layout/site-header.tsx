@@ -2,17 +2,18 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Github, Volume2, VolumeX } from '@/components/ui/icons'
+import { CreativeCommons, Github, Volume2, VolumeX } from '@/components/ui/icons'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { APP_CONFIG } from '@/config/app'
+import { APP_CONFIG } from '@/config/application'
+import { APP_ROUTES } from '@/config/routes'
 import { useGithubStars } from '@/hooks/use-github-stars'
 import { useSoundPreference } from '@/hooks/use-sound-preference'
 import { cn } from '@/utils/cn'
 
 const NAV_ITEMS = [
-  { id: 'home', label: 'Home', href: '/' },
-  { id: 'info', label: 'Info', href: '/info' },
-]
+  { id: 'home', label: 'Home', href: APP_ROUTES.landing },
+  { id: 'info', label: 'Info', href: APP_ROUTES.info },
+] as const
 
 const CONTROL_CLASS = 'inline-flex h-6 items-center justify-center text-primary'
 
@@ -81,6 +82,23 @@ export default function SiteHeader() {
             {soundEnabled ? 'Disable sounds' : 'Enable sounds'}
           </TooltipContent>
         </Tooltip>
+
+        {pathname === APP_ROUTES.landing && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <a
+                href={APP_CONFIG.links.license}
+                target="_blank"
+                rel="license noopener noreferrer"
+                aria-label="Creative Commons BY-NC-SA 4.0 license"
+                className={CONTROL_CLASS}
+              >
+                <CreativeCommons size={18} />
+              </a>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">CC BY-NC-SA 4.0</TooltipContent>
+          </Tooltip>
+        )}
       </div>
     </nav>
   )

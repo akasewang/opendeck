@@ -3,7 +3,7 @@ import ExploreButton from '@/components/brand/explore-button'
 import PianoTitle from '@/components/brand/piano-title'
 import SiteHeader from '@/components/layout/site-header'
 import { ExternalLink } from '@/components/ui/icons'
-import { APP_CONFIG } from '@/config/app'
+import { APP_CONFIG } from '@/config/application'
 import { createPageMetadata } from '@/lib/seo/metadata'
 
 export const metadata: Metadata = createPageMetadata({
@@ -30,8 +30,13 @@ const links = [
 
 export default function InfoPage() {
   return (
-    <main className="relative min-h-screen overflow-hidden bg-background text-foreground">
+    <main
+      id="main-content"
+      className="relative min-h-dvh overflow-hidden bg-background text-foreground"
+    >
       <SiteHeader />
+
+      <h1 className="sr-only">About OpenDeck</h1>
 
       <div
         aria-hidden

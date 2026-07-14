@@ -1,17 +1,20 @@
 import type { Metadata } from 'next'
 import './globals.css'
 import ScrollEndShake from '@/components/effects/scroll-end-shake'
-import CurtainProvider from '@/components/transition/curtain'
+import { MotionProvider } from '@/components/providers/motion-provider'
+import CurtainProvider from '@/components/transitions/page-curtain'
 import { TooltipProvider } from '@/components/ui/tooltip'
-import { APP_CONFIG } from '@/config/app'
-import { AuthProvider } from '@/features/auth/auth-provider'
-import { badeenDisplay, geistMono, geistSans } from '@/lib/fonts'
+import { APP_CONFIG } from '@/config/application'
+import { badeenDisplay, geistMono, geistSans } from '@/config/fonts'
+import { MOTION_DURATION_MS } from '@/config/motion'
+import { APP_ROUTES } from '@/config/routes'
+import { AuthProvider } from '@/features/auth/providers/auth-provider'
 import { createPageMetadata } from '@/lib/seo/metadata'
 
 const rootMetadata = createPageMetadata({
   title: `${APP_CONFIG.name} - Open Source Discovery`,
   description: APP_CONFIG.description,
-  path: '/',
+  path: APP_ROUTES.landing,
 })
 
 const websiteJsonLd = {
@@ -42,8 +45,8 @@ export const metadata: Metadata = {
   },
   manifest: '/manifest.webmanifest',
   other: {
-    'theme-color': '#0a0a0a',
-    'msapplication-TileColor': '#0a0a0a',
+    'theme-color': APP_CONFIG.themeColor,
+    'msapplication-TileColor': APP_CONFIG.themeColor,
   },
   robots: {
     index: true,
@@ -72,16 +75,24 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} ${badeenDisplay.variable}`}
     >
-      <body className="antialiased" suppressHydrationWarning>
+      <body className="antialiased">
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-md focus:bg-primary focus:px-3 focus:py-2 focus:text-sm focus:font-medium focus:text-primary-foreground"
+        >
+          Skip to main content
+        </a>
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: websiteJsonLdScript }}
         />
-        <TooltipProvider delayDuration={150}>
-          <AuthProvider>
-            <CurtainProvider>{children}</CurtainProvider>
-          </AuthProvider>
-        </TooltipProvider>
+        <MotionProvider>
+          <TooltipProvider delayDuration={MOTION_DURATION_MS.tooltipDelay}>
+            <AuthProvider>
+              <CurtainProvider>{children}</CurtainProvider>
+            </AuthProvider>
+          </TooltipProvider>
+        </MotionProvider>
         <ScrollEndShake />
       </body>
     </html>

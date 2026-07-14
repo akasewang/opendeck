@@ -3,9 +3,11 @@
 import { Icon } from '@iconify/react'
 import { motion } from 'framer-motion'
 import Image from 'next/image'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { buttonVariants } from '@/components/ui/button'
 import { toast } from '@/components/ui/toast'
-import { useAuth } from '@/features/auth/auth-provider'
+import { API_ROUTES, appRoute, withQuery } from '@/config/routes'
+import { useAuth } from '@/features/auth/providers/auth-provider'
 import PageShell from '@/features/dashboard/components/page-shell'
 import {
   AboutPanel,
@@ -15,100 +17,123 @@ import {
   RepoJournalPanel,
 } from '@/features/repositories/components/repo-detail-panels'
 import {
-  BUTTON_CLASS,
-  DETAIL_FETCH_TIMEOUT_MS,
   ExternalButton,
-  fetchWithTimeout,
   loadErrorMessage,
   PANEL_CLASS,
   RepoDetailAuthGate,
   RepoDetailLoading,
   RepoDetailNotFound,
   SignalStat,
-  sectionItem,
-  sectionStagger,
-} from '@/features/repositories/components/repo-detail-primitives'
+} from '@/features/repositories/components/repo-detail-states'
 import RepoDocsPanel, {
   RepoAdditionalMarkdownPanel,
 } from '@/features/repositories/components/repo-docs-panel'
+import {
+  detailSectionStagger,
+  sectionItem,
+} from '@/features/repositories/motion/repo-detail-motion'
 import { useRepoContributors } from '@/features/repositories/hooks/use-repo-contributors'
-import type { JournalPayload, RepoInsight } from '@/features/repositories/types'
-import { cleanReadme } from '@/features/repositories/utils'
+import type {
+  RepositoryInsight,
+  RepositoryJournalPayload,
+} from '@/features/repositories/types/repository'
+import { cleanReadme } from '@/features/repositories/utils/repository-display'
+import {
+  isRepositoryInsight,
+  isRepositoryJournalPayload,
+} from '@/features/repositories/utils/repository-response-validation'
+import { fetchWithTimeout } from '@/lib/api/http-client'
+import { apiErrorMessage } from '@/lib/api/errors'
 import { cn } from '@/utils/cn'
+
+const FETCH_TIMEOUT_MS = 20_000
 
 export default function RepoDetailWorkspace({ fullName }: { fullName: string }) {
   const { user, isLoading: isAuthLoading, openAuth } = useAuth()
-  const [insight, setInsight] = useState<RepoInsight | null>(null)
-  const [journal, setJournal] = useState<JournalPayload | null>(null)
+  const userId = user?.id
+  const [insight, setInsight] = useState<RepositoryInsight | null>(null)
+  const [journal, setJournal] = useState<RepositoryJournalPayload | null>(null)
   const [journalBody, setJournalBody] = useState('')
   const [journalStatus, setJournalStatus] = useState('note')
   const [journalIssue, setJournalIssue] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [journalError, setJournalError] = useState<string | null>(null)
+  const insightRequestRef = useRef(0)
+  const journalRequestRef = useRef(0)
   const {
     contributors,
     totalCount: contributorsTotalCount,
     error: contributorsError,
     isLoading: contributorsLoading,
-  } = useRepoContributors(user ? (insight?.repo.full_name ?? fullName) : null)
+  } = useRepoContributors(userId ? (insight?.repo.full_name ?? fullName) : null)
 
   const loadInsight = useCallback(async () => {
-    if (!user) {
+    const requestId = insightRequestRef.current + 1
+    insightRequestRef.current = requestId
+    if (!userId) {
       setInsight(null)
       setIsLoading(false)
       return
     }
 
     setIsLoading(true)
+    setInsight(null)
     setLoadError(null)
     try {
       const response = await fetchWithTimeout(
-        `/api/repos/detail?fullName=${encodeURIComponent(fullName)}`,
+        withQuery(API_ROUTES.repositories.detail, { fullName }),
         {
           credentials: 'include',
           cache: 'no-store',
         },
-        DETAIL_FETCH_TIMEOUT_MS,
+        FETCH_TIMEOUT_MS,
       )
-      const payload = await response.json().catch(() => null)
-      if (!response.ok) throw new Error(payload?.error || 'Unable to load repository.')
-      setInsight(payload)
+      const payload: unknown = await response.json().catch(() => null)
+      if (!response.ok) throw new Error(apiErrorMessage(payload, 'Unable to load repository.'))
+      if (!isRepositoryInsight(payload))
+        throw new Error('Repository API returned an invalid response.')
+      if (insightRequestRef.current === requestId) setInsight(payload)
     } catch (error) {
+      if (insightRequestRef.current !== requestId) return
       const message = loadErrorMessage(error, 'Unable to load repository')
       toast(message, {
         tone: 'error',
       })
       setLoadError(message)
     } finally {
-      setIsLoading(false)
+      if (insightRequestRef.current === requestId) setIsLoading(false)
     }
-  }, [fullName, user])
+  }, [fullName, userId])
 
   const loadJournal = useCallback(async () => {
-    if (!user) {
+    const requestId = journalRequestRef.current + 1
+    journalRequestRef.current = requestId
+    if (!userId) {
       setJournal(null)
       setJournalError(null)
       return
     }
 
     try {
-      const response = await fetch(
-        `/api/account/journal?fullName=${encodeURIComponent(fullName)}`,
-        {
-          credentials: 'include',
-          cache: 'no-store',
-        },
-      )
-      const payload = await response.json().catch(() => null)
-      if (!response.ok) throw new Error(payload?.error || 'Unable to load journal entries.')
+      const response = await fetch(withQuery(API_ROUTES.account.journal, { fullName }), {
+        credentials: 'include',
+        cache: 'no-store',
+      })
+      const payload: unknown = await response.json().catch(() => null)
+      if (!response.ok) throw new Error(apiErrorMessage(payload, 'Unable to load journal entries.'))
+      if (!isRepositoryJournalPayload(payload)) {
+        throw new Error('Journal API returned an invalid response.')
+      }
+      if (journalRequestRef.current !== requestId) return
       setJournal(payload)
       setJournalError(null)
     } catch (error) {
+      if (journalRequestRef.current !== requestId) return
       setJournal(null)
       setJournalError(error instanceof Error ? error.message : 'Unable to load journal entries.')
     }
-  }, [fullName, user])
+  }, [fullName, userId])
 
   useEffect(() => {
     if (isAuthLoading) return
@@ -154,7 +179,12 @@ export default function RepoDetailWorkspace({ fullName }: { fullName: string }) 
 
   return (
     <PageShell className="space-y-5">
-      <motion.div variants={sectionStagger} initial="hidden" animate="show" className="space-y-5">
+      <motion.div
+        variants={detailSectionStagger}
+        initial="hidden"
+        animate="show"
+        className="space-y-5"
+      >
         <motion.header variants={sectionItem} className="space-y-3">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
             <div className="flex min-w-0 max-w-4xl items-start gap-3.5">
@@ -193,10 +223,7 @@ export default function RepoDetailWorkspace({ fullName }: { fullName: string }) 
                   Website
                 </ExternalButton>
               )}
-              <a
-                href={`/dashboard/compare?repos=${encodeURIComponent(fullRepoName)}`}
-                className={BUTTON_CLASS}
-              >
+              <a href={appRoute.compareRepositories([fullRepoName])} className={buttonVariants()}>
                 <Icon icon="ri:scales-3-line" className="h-4 w-4" />
                 Compare
               </a>
@@ -220,7 +247,7 @@ export default function RepoDetailWorkspace({ fullName }: { fullName: string }) 
           <SignalStat icon="ri:team-line" label="Contributors" value={resolvedContributorCount} />
         </motion.section>
 
-        <div className="grid gap-4 xl:grid-cols-3">
+        <div className="grid gap-5 xl:grid-cols-3">
           <motion.section
             variants={sectionItem}
             className={cn(PANEL_CLASS, 'h-[28rem] xl:col-span-2')}
@@ -237,7 +264,7 @@ export default function RepoDetailWorkspace({ fullName }: { fullName: string }) 
           </motion.section>
         </div>
 
-        <div className="grid gap-4 xl:grid-cols-3">
+        <div className="grid gap-5 xl:grid-cols-3">
           <motion.section
             variants={sectionItem}
             className={cn(PANEL_CLASS, 'h-[26rem] xl:col-span-2')}
@@ -269,7 +296,7 @@ export default function RepoDetailWorkspace({ fullName }: { fullName: string }) 
           </motion.section>
         </div>
 
-        <div className="grid gap-4 xl:grid-cols-3">
+        <div className="grid gap-5 xl:grid-cols-3">
           <motion.section
             variants={sectionItem}
             className={cn(PANEL_CLASS, 'relative h-[36rem] xl:col-span-2')}

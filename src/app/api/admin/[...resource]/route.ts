@@ -8,9 +8,14 @@ import {
   listAdminUsers,
   saveAllowlistRule,
   updateAdminUser,
-} from '@/lib/account'
-import { listAdminIngestionDashboard, recordAdminAudit } from '@/lib/account-features'
-import { getUserFromRequest } from '@/lib/auth'
+} from '@/features/admin/services/admin-account-service'
+import {
+  listAdminIngestionDashboard,
+  recordAdminAudit,
+} from '@/features/admin/services/admin-dashboard-service'
+import { getUserFromRequest } from '@/features/auth/services/authentication-service'
+import { safeErrorContext } from '@/lib/api/errors'
+import { readJsonObject } from '@/lib/api/request-body'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -21,18 +26,26 @@ type RouteContext = {
 
 function errorResponse(error: unknown, status = 400) {
   const message = error instanceof Error ? error.message : 'Unable to process request.'
+  const schemaMissing = message.includes('does not exist')
   const databaseError =
-    message.startsWith('Failed query') ||
-    message.includes('does not exist') ||
-    message.includes('violates')
+    schemaMissing || message.startsWith('Failed query') || message.includes('violates')
+  const notFound = message.endsWith('not found.')
+  const conflict = message === 'At least one active admin must remain.'
+  const responseStatus = databaseError ? 500 : notFound ? 404 : conflict ? 409 : status
+
+  if (databaseError) {
+    console.error('Admin API database operation failed', safeErrorContext(error))
+  }
 
   return NextResponse.json(
     {
       error: databaseError
-        ? 'Account database tables are not available. Run migrations and try again.'
+        ? schemaMissing
+          ? 'Account database tables are not available. Run migrations and try again.'
+          : 'Unable to complete the admin request right now.'
         : message,
     },
-    { status: databaseError ? 500 : status },
+    { status: responseStatus },
   )
 }
 
@@ -45,13 +58,19 @@ async function requireAdmin(request: NextRequest) {
   return { user }
 }
 
-async function readBody(request: NextRequest) {
-  const body = await request.json().catch(() => ({}))
-  return typeof body === 'object' && body !== null ? (body as Record<string, unknown>) : {}
-}
-
 async function resourcePath(context: RouteContext) {
   return (await context.params).resource ?? ['users']
+}
+
+async function recordAuditSafely(...args: Parameters<typeof recordAdminAudit>) {
+  try {
+    await recordAdminAudit(...args)
+  } catch (error) {
+    console.error(
+      'Admin action succeeded but its audit record could not be written',
+      safeErrorContext(error),
+    )
+  }
 }
 
 export async function GET(request: NextRequest, context: RouteContext) {
@@ -85,17 +104,17 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
   try {
     const [resource, action] = await resourcePath(context)
-    const body = await readBody(request)
+    const body = await readJsonObject(request)
 
     if (resource === 'users' && action === 'delete') {
       const result = await deleteUserAsAdmin(auth.user.id, body)
-      await recordAdminAudit(auth.user.id, 'delete_user', 'user', result.id)
+      await recordAuditSafely(auth.user.id, 'delete_user', 'user', result.id)
       return NextResponse.json(result)
     }
 
     if (resource === 'users') {
       const user = await updateAdminUser(auth.user.id, body)
-      await recordAdminAudit(auth.user.id, 'update_user', 'user', user.id, {
+      await recordAuditSafely(auth.user.id, 'update_user', 'user', user.id, {
         role: user.role,
         status: body.status === 'suspended' ? 'suspended' : 'active',
       })
@@ -104,7 +123,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
     if (resource === 'invites') {
       const invite = await createInvite(auth.user.id, body)
-      await recordAdminAudit(auth.user.id, 'create_invite', 'invite', invite.id, {
+      await recordAuditSafely(auth.user.id, 'create_invite', 'invite', invite.id, {
         email: invite.email,
         role: invite.role,
         expiresAt: invite.expiresAt,
@@ -115,13 +134,13 @@ export async function POST(request: NextRequest, context: RouteContext) {
     if (resource === 'allowlist' && action === 'delete') {
       const id = String(body.id ?? '')
       const result = await deleteAllowlistRule(id)
-      await recordAdminAudit(auth.user.id, 'delete_allowlist_rule', 'allowlist_rule', id)
+      await recordAuditSafely(auth.user.id, 'delete_allowlist_rule', 'allowlist_rule', id)
       return NextResponse.json(result)
     }
 
     if (resource === 'allowlist') {
       const rule = await saveAllowlistRule(auth.user.id, body)
-      await recordAdminAudit(auth.user.id, 'save_allowlist_rule', 'allowlist_rule', rule.id, {
+      await recordAuditSafely(auth.user.id, 'save_allowlist_rule', 'allowlist_rule', rule.id, {
         pattern: rule.pattern,
         kind: rule.kind,
       })

@@ -1,7 +1,7 @@
 'use client'
 
-import CountPill from '@/components/ui/count-pill'
 import Select from '@/components/ui/select'
+import PageHeader from '@/features/dashboard/components/page-header'
 import PageShell from '@/features/dashboard/components/page-shell'
 import RepoTable from '@/features/repositories/components/repo-table'
 import { useRepoFeed } from '@/features/repositories/hooks/use-repo-feed'
@@ -10,21 +10,12 @@ export default function Page() {
   const feed = useRepoFeed('/api/github-trending')
 
   return (
-    <PageShell>
-      <div className="mb-6 flex flex-col sm:flex-row sm:flex-wrap justify-between items-start gap-4">
-        <div className="flex min-w-0 flex-col gap-1.5">
-          <div className="flex items-center gap-3">
-            <h1 className="text-balance text-lg sm:text-xl font-medium leading-[100%] text-primary">
-              Trending
-            </h1>
-            <CountPill count={feed.total} />
-          </div>
-          <p className="text-pretty text-[13px] text-muted-foreground max-w-md">
-            Repositories gaining significant traction and activity this month.
-          </p>
-        </div>
-
-        <div className="flex w-full shrink-0 flex-col sm:w-auto sm:flex-row gap-3">
+    <PageShell className="flex h-full min-h-0 flex-col gap-5">
+      <PageHeader
+        title="Trending"
+        description="Repositories gaining significant traction and activity this month."
+        count={feed.total}
+        actions={
           <Select
             value={feed.language}
             onChange={(e) => feed.setLanguage(e.target.value)}
@@ -33,8 +24,8 @@ export default function Page() {
             ariaLabel="Filter trending repositories by language"
             className="sm:w-44"
           />
-        </div>
-      </div>
+        }
+      />
 
       <RepoTable
         data={feed.filtered}
@@ -47,6 +38,7 @@ export default function Page() {
         hasMore={feed.hasMore}
         isLoadingMore={feed.isLoadingMore}
         onLoadMore={feed.loadMore}
+        className="min-h-0 flex-1"
       />
     </PageShell>
   )

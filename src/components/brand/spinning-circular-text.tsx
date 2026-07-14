@@ -40,7 +40,7 @@ export function SpinningCircularText({
     >
       <div
         className={cn(
-          'relative animate-[spin_10s_linear_infinite] leading-none',
+          'relative animate-[spin_10s_linear_infinite] leading-none motion-reduce:animate-none',
           '*:absolute *:top-1/2 *:left-1/2 *:inline-block',
           '*:[--sc-char-rotate:calc(var(--sc-inner-angle)*var(--sc-char-index))]',
           '*:transform-[translate(-50%,-50%)_rotate(var(--sc-char-rotate))_translateY(var(--sc-radius))]',

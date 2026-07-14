@@ -1,5 +1,6 @@
 'use client'
 
+import { useReducedMotion } from 'framer-motion'
 import Link from 'next/link'
 import { useEffect, useRef } from 'react'
 import { SquareArrowOutUpRight } from '@/components/ui/icons'
@@ -11,6 +12,7 @@ export default function ExploreButton() {
   const textRef = useRef<HTMLDivElement>(null)
   const innerRef = useRef<HTMLDivElement>(null)
   const arrowRef = useRef<HTMLSpanElement>(null)
+  const prefersReducedMotion = useReducedMotion()
 
   useEffect(() => {
     const link = linkRef.current
@@ -31,7 +33,6 @@ export default function ExploreButton() {
     const ROT_STIFFNESS = 160
     const ROT_DAMPING = 10
 
-    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     const finePointer = window.matchMedia('(pointer: fine)').matches
 
     let cx = 0
@@ -128,7 +129,7 @@ export default function ExploreButton() {
     }
 
     measure()
-    if (reduceMotion || !finePointer) return
+    if (prefersReducedMotion || !finePointer) return
 
     window.addEventListener('mousemove', handleMove)
     window.addEventListener('resize', measure)
@@ -136,8 +137,12 @@ export default function ExploreButton() {
       cancelAnimationFrame(raf)
       window.removeEventListener('mousemove', handleMove)
       window.removeEventListener('resize', measure)
+      ring.style.transform = ''
+      text.style.transform = ''
+      inner.style.transform = ''
+      arrow.style.transform = ''
     }
-  }, [])
+  }, [prefersReducedMotion])
 
   return (
     <Link

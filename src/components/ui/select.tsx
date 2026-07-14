@@ -16,7 +16,7 @@ const SelectTrigger = forwardRef<
     ref={ref}
     {...props}
     className={cn(
-      'group flex h-9 w-full items-center justify-between gap-2 rounded-md border border-border/50 bg-background px-3 py-2 text-sm text-foreground outline-none transition-all duration-300 ease-out focus:ring-[0.5px] focus:ring-ring/30 disabled:pointer-events-none disabled:opacity-50 hover:border-border/80 data-[state=open]:border-border/80 [&>span]:line-clamp-1',
+      'group flex h-9 w-full items-center justify-between gap-2 rounded-md border border-border/50 bg-background px-3 py-2 text-sm text-foreground outline-none transition-[border-color,box-shadow] duration-300 ease-out focus:ring-[0.5px] focus:ring-ring/30 disabled:pointer-events-none disabled:opacity-50 hover:border-border/80 data-[state=open]:border-border/80 [&>span]:line-clamp-1',
       className,
     )}
   >
@@ -38,18 +38,13 @@ const SelectContent = forwardRef<
       position={position}
       sideOffset={6}
       className={cn(
-        'select-content-elegant relative z-50 max-h-96 min-w-[8rem] overflow-hidden rounded-lg border border-border/60 bg-card/95 backdrop-blur-md text-foreground shadow-lg',
+        'select-content-elegant relative z-50 min-w-[8rem] overflow-hidden rounded-lg border border-border/60 bg-card/95 backdrop-blur-md text-foreground shadow-lg',
         position === 'popper' && 'w-[var(--radix-select-trigger-width)]',
         className,
       )}
       {...props}
     >
-      <SelectPrimitive.Viewport
-        className={cn(
-          'p-1',
-          position === 'popper' && 'h-[var(--radix-select-content-available-height)]',
-        )}
-      >
+      <SelectPrimitive.Viewport className="max-h-[var(--radix-select-content-available-height)] overflow-y-auto p-1">
         {children}
       </SelectPrimitive.Viewport>
     </SelectPrimitive.Content>
