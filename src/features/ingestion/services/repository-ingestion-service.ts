@@ -449,6 +449,24 @@ async function getRepoMirrorStateByGhId(ghId: number) {
   }
 }
 
+type RepositorySnapshotMetrics = Pick<NormalizedGithubRepo, 'ghId' | 'stars' | 'forks' | 'openIssues'>
+
+export function buildRepositorySnapshotWrite(database: typeof db, repo: RepositorySnapshotMetrics) {
+  return database.insert(repoMetricSnapshots).select(
+    database
+      .select({
+        id: sql<string>`gen_random_uuid()`.as('id'),
+        repoId: repos.id,
+        stars: sql<number>`${repo.stars}`.as('stars'),
+        forks: sql<number>`${repo.forks}`.as('forks'),
+        openIssues: sql<number>`${repo.openIssues}`.as('open_issues'),
+        capturedAt: sql<Date>`now()`.as('captured_at'),
+      })
+      .from(repos)
+      .where(eq(repos.ghId, repo.ghId)),
+  )
+}
+
 async function upsertNormalizedRepo(
   repo: NormalizedGithubRepo,
   options: { allowCreate?: boolean } = {},
@@ -497,17 +515,7 @@ async function upsertNormalizedRepo(
         .set(updateValues)
         .where(eq(repos.ghId, repo.ghId))
         .returning({ id: repos.id })
-  const snapshotWrite = db.insert(repoMetricSnapshots).select(
-    db
-      .select({
-        repoId: repos.id,
-        stars: sql<number>`${repo.stars}`.as('stars'),
-        forks: sql<number>`${repo.forks}`.as('forks'),
-        openIssues: sql<number>`${repo.openIssues}`.as('open_issues'),
-      })
-      .from(repos)
-      .where(eq(repos.ghId, repo.ghId)),
-  )
+  const snapshotWrite = buildRepositorySnapshotWrite(db, repo)
   const [savedRows] = await db.batch([repositoryWrite, snapshotWrite])
   const [saved] = savedRows
 
