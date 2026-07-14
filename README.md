@@ -21,7 +21,7 @@ A public discovery engine for open source repositories that are actually ready f
 
 Most "find an open source project" tools rank by stars. OpenDeck ranks by whether you could realistically open a pull request this week.
 
-| | |
+| Capability | How it works |
 | :-- | :-- |
 | **Contribution gate** | Every candidate is scored before it is stored. A repository is only indexed if it is public, active, licensed, has a primary language, has open issues and carries description or README context. |
 | **Curated corpus** | Discovery is bounded at **1300 repositories**. Once the cap is reached, ingestion refreshes what is known instead of endlessly widening the pool. |
@@ -29,7 +29,7 @@ Most "find an open source project" tools rank by stars. OpenDeck ranks by whethe
 | **Fast by default** | Public pages read from the Postgres mirror. GitHub is called by background jobs, not by visitors. |
 | **Account workspace** | Save repositories, build collections, follow orgs, keep private notes, track contribution stage, request alerts on good first issues and export the lot. |
 
-## Technology Stack
+## Technology stack
 
 - **Framework**: Next.js 15 (App Router) + React 19
 - **Language**: TypeScript (strict mode)
@@ -38,7 +38,7 @@ Most "find an open source project" tools rank by stars. OpenDeck ranks by whethe
 - **Database**: Neon Postgres
 - **ORM**: Drizzle ORM
 - **Auth**: Email magic links, hashed session tokens
-- **Email Service**: Resend
+- **Email service**: Resend
 - **Tooling**: Biome, ESLint, tsx test runner
 - **Automation**: GitHub Actions, Vercel
 

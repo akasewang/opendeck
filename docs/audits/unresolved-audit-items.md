@@ -10,37 +10,30 @@ This is the residual list from the architecture, implementation and data flow, U
 
 ## Priority summary
 
-
-| | Item | Why it is still open |
-| :-- | :-- | :-- |
-| ![P1](https://img.shields.io/badge/P1-FFBD2E?style=flat-square) | [Exercise database transactions against PostgreSQL](#postgresql-transaction-integration-has-not-been-executed) | The transactional SQL compiles and its migrations validate, but it has never run against a real PostgreSQL database. |
-| ![P1](https://img.shields.io/badge/P1-FFBD2E?style=flat-square) | [Complete rendered UI and accessibility verification](#rendered-ui-and-accessibility-matrix-was-not-executable) | Source level repairs are in place, but no browser backend was available for viewport, zoom, keyboard, reduced motion or automated accessibility checks. |
-| ![P1](https://img.shields.io/badge/P1-FFBD2E?style=flat-square) | [Rotate and verify the production cron credential](#rotate-and-verify-the-production-cron-credential) | Source now rejects values shorter than 32 characters, but the deployed application and scheduler must share a newly generated value. |
-| ![P1](https://img.shields.io/badge/P1-FFBD2E?style=flat-square) | [Establish production observability and readiness policy](#production-observability-and-health-readiness-are-not-established) | There are diagnostic logs but no error reporter, metrics, traces, request identifiers or host specific readiness contract. |
-| ![P2](https://img.shields.io/badge/P2-2088FF?style=flat-square) | [Apply generated database migrations](#apply-and-verify-the-database-migrations) | Verified through `0013`. Migrations `0014` and `0015` remain pending. |
-| ![P2](https://img.shields.io/badge/P2-2088FF?style=flat-square) | [Establish trusted client IP provenance](#forwarded-client-ips-require-a-trusted-proxy) | Distributed rate limiting still trusts forwarding headers supplied by the deployment proxy. |
-| ![P2](https://img.shields.io/badge/P2-2088FF?style=flat-square) | [Expand automated integration coverage](#automated-regression-coverage-is-partial) | Unit regressions run persistently, but database concurrency and browser workflows have no automated coverage. |
-| ![P2](https://img.shields.io/badge/P2-2088FF?style=flat-square) | [Define retention and historical token cleanup](#historical-magic-link-metadata-needs-a-retention-decision) | New magic links carry no raw credentials, but legacy metadata, backups, provider logs and deletion propagation need a documented lifecycle. |
-| ![P2](https://img.shields.io/badge/P2-2088FF?style=flat-square) | [Confirm public asset provenance](#public-icon-and-social-preview-ownership-is-undocumented) | Font licenses are documented. The icon and social preview image are not. |
-| ![P3](https://img.shields.io/badge/P3-61DAFB?style=flat-square) | [Verify the CI workflow on GitHub](#verify-the-ci-workflow-on-github) | Validated locally, never executed on a GitHub hosted runner. |
-| ![P3](https://img.shields.io/badge/P3-61DAFB?style=flat-square) | [Require idempotency keys for new email types](#email-guarantees-depend-on-stable-event-keys) | Current workflows are covered. A future call site could silently skip deduplication. |
-| ![P3](https://img.shields.io/badge/P3-61DAFB?style=flat-square) | [Exercise live external workflows](#live-external-workflows-were-not-exercised) | Needs isolated credentials and disposable external state. |
-| ![P3](https://img.shields.io/badge/P3-61DAFB?style=flat-square) | [Measure real performance](#performance-evidence-is-limited-to-local-build-output) | Only local build and bundle output exist. No production Core Web Vitals or query plans. |
-| ![P3](https://img.shields.io/badge/P3-61DAFB?style=flat-square) | [Finish or drop theme and private profile](#stored-theme-and-private-profile-preferences-have-no-product-behavior) | The columns are stored but no product behavior exists behind them. |
-
-
-
+| | Item | Priority | Why it is still open |
+| :-- | :-- | :-- | :-- |
+| 1 | [Exercise database transactions against PostgreSQL](#postgresql-transaction-integration-has-not-been-executed) | ![P1](https://img.shields.io/badge/P1-FFBD2E?style=flat-square) | The transactional SQL compiles and its migrations validate, but it has never run against a real PostgreSQL database. |
+| 2 | [Complete rendered UI and accessibility verification](#rendered-ui-and-accessibility-matrix-was-not-executable) | ![P1](https://img.shields.io/badge/P1-FFBD2E?style=flat-square) | Source level repairs are in place, but no browser backend was available for viewport, zoom, keyboard, reduced motion or automated accessibility checks. |
+| 3 | [Rotate and verify the production cron credential](#rotate-and-verify-the-production-cron-credential) | ![P1](https://img.shields.io/badge/P1-FFBD2E?style=flat-square) | Source now rejects values shorter than 32 characters, but the deployed application and scheduler must share a newly generated value. |
+| 4 | [Establish production observability and readiness policy](#production-observability-and-health-readiness-are-not-established) | ![P1](https://img.shields.io/badge/P1-FFBD2E?style=flat-square) | There are diagnostic logs but no error reporter, metrics, traces, request identifiers or host specific readiness contract. |
+| 5 | [Apply generated database migrations](#apply-and-verify-the-database-migrations) | ![P2](https://img.shields.io/badge/P2-2088FF?style=flat-square) | Verified through `0013`. Migrations `0014` and `0015` remain pending. |
+| 6 | [Establish trusted client IP provenance](#forwarded-client-ips-require-a-trusted-proxy) | ![P2](https://img.shields.io/badge/P2-2088FF?style=flat-square) | Distributed rate limiting still trusts forwarding headers supplied by the deployment proxy. |
+| 7 | [Expand automated integration coverage](#automated-regression-coverage-is-partial) | ![P2](https://img.shields.io/badge/P2-2088FF?style=flat-square) | Unit regressions run persistently, but database concurrency and browser workflows have no automated coverage. |
+| 8 | [Define retention and historical token cleanup](#historical-magic-link-metadata-needs-a-retention-decision) | ![P2](https://img.shields.io/badge/P2-2088FF?style=flat-square) | New magic links carry no raw credentials, but legacy metadata, backups, provider logs and deletion propagation need a documented lifecycle. |
+| 9 | [Confirm public asset provenance](#public-icon-and-social-preview-ownership-is-undocumented) | ![P2](https://img.shields.io/badge/P2-2088FF?style=flat-square) | Font licenses are documented. The icon and social preview image are not. |
+| 10 | [Verify the CI workflow on GitHub](#verify-the-ci-workflow-on-github) | ![P3](https://img.shields.io/badge/P3-61DAFB?style=flat-square) | Validated locally, never executed on a GitHub hosted runner. |
+| 11 | [Require idempotency keys for new email types](#email-guarantees-depend-on-stable-event-keys) | ![P3](https://img.shields.io/badge/P3-61DAFB?style=flat-square) | Current workflows are covered. A future call site could silently skip deduplication. |
+| 12 | [Exercise live external workflows](#live-external-workflows-were-not-exercised) | ![P3](https://img.shields.io/badge/P3-61DAFB?style=flat-square) | Needs isolated credentials and disposable external state. |
+| 13 | [Measure real performance](#performance-evidence-is-limited-to-local-build-output) | ![P3](https://img.shields.io/badge/P3-61DAFB?style=flat-square) | Only local build and bundle output exist. No production Core Web Vitals or query plans. |
+| 14 | [Finish or drop theme and private profile](#stored-theme-and-private-profile-preferences-have-no-product-behavior) | ![P3](https://img.shields.io/badge/P3-61DAFB?style=flat-square) | The columns are stored but no product behavior exists behind them. |
 
 ## Deployment prerequisites
-
-
 
 ### Apply and verify the database migrations
 
 > **Status**: `0011` through `0013` independently verified. `0014` and `0015` generated but pending.
 
 Read only verification against the configured database confirmed that `0011`, `0012` and `0013` are recorded, the lease, synchronization and rate limit tables exist, the idempotency column and indexes exist, the legacy verification column is gone, and current finite state values fit the application sets.
-
 
 | Migration | Contents | State |
 | :-- | :-- | :-- |
@@ -49,17 +42,14 @@ Read only verification against the configured database confirmed that `0011`, `0
 | `0014_mighty_captain_midlands.sql` | Validated finite state and numeric range `CHECK` constraints. No data updates, drops, renames or table rewrites | ![Pending](https://img.shields.io/badge/Pending-FFBD2E?style=flat-square) |
 | `0015_real_the_hand.sql` | Issue sync continuation page, full cycle start timestamp, index for the oldest incomplete issue mirrors, positive page `CHECK` | ![Pending](https://img.shields.io/badge/Pending-FFBD2E?style=flat-square) |
 
-
 Until `0015` is applied, issue mirrors larger than one bounded batch cannot continue past their first 500 GitHub records.
 
 **Follow up**
 
-1. Review and apply `0014` and `0015` in order in every target environment.
-2. Verify their constraints, columns and incomplete sync index after deployment.
-3. Repeat the finite state query before applying `0014` to any other environment.
-4. Exercise the authenticated and scheduled workflows listed below.
-
-
+- Review and apply `0014` and `0015`, in that order, in every target environment.
+- Verify their constraints, columns and incomplete sync index after deployment.
+- Repeat the finite state query before applying `0014` to any other environment.
+- Exercise the authenticated and scheduled workflows listed below.
 
 ### Rotate and verify the production cron credential
 
@@ -69,13 +59,11 @@ Production configuration now rejects a `CRON_SECRET` shorter than 32 characters,
 
 **Follow up**
 
-1. Generate a cryptographically random value of at least 32 characters in the production secret manager.
-2. Update the application and scheduler atomically so scheduled jobs never hit an authorization gap.
-3. Verify unauthenticated and old secret requests return `401` while the new scheduler credential succeeds.
-4. Confirm the secret never appears in workflow files, logs, URLs, analytics or provider error payloads.
-5. Record a repeatable rotation and rollback procedure.
-
-
+- Generate a cryptographically random value of at least 32 characters in the production secret manager.
+- Update the application and scheduler atomically so scheduled jobs never hit an authorization gap.
+- Verify unauthenticated and old secret requests return `401` while the new scheduler credential succeeds.
+- Confirm the secret never appears in workflow files, logs, URLs, analytics or provider error payloads.
+- Record a repeatable rotation and rollback procedure.
 
 ### Verify the CI workflow on GitHub
 
@@ -90,11 +78,7 @@ Production configuration now rejects a `CRON_SECRET` shorter than 32 characters,
 - Make the job a required branch protection check.
 - Periodically review and deliberately update the pinned action SHAs from their official releases.
 
-
-
 ## Verification gaps
-
-
 
 ### PostgreSQL transaction integration has not been executed
 
@@ -112,8 +96,6 @@ Docker, `psql` and a local PostgreSQL server were all unavailable, and running t
 - Force a metric snapshot failure and confirm its repository write rolls back in the same batch.
 - Force every supported admin audit insert to fail and confirm the associated admin mutation rolls back.
 - Run two copies of each leased job and confirm only one performs the work.
-
-
 
 ### Rendered UI and accessibility matrix was not executable
 
@@ -138,8 +120,6 @@ Only the dark theme is implemented. Light theme and right to left behavior are n
 - Run an established accessibility scanner once a browser test system is chosen.
 - Repeat the matrix with disposable authenticated user and admin accounts.
 
-
-
 ### Automated regression coverage is partial
 
 > **Status**: focused unit runner added, integration coverage open.
@@ -152,8 +132,6 @@ Concurrency and rollback regressions stay unprotected without a disposable Postg
 
 - Add PostgreSQL backed integration tests for authentication, admin invariants, job leases, rate limits, issue synchronization, email idempotency and atomic ingestion.
 - Add browser tests for account forms, duplicate submission prevention, stale response handling, optimistic rollback, unauthorized states and retry paths.
-
-
 
 ### Live external workflows were not exercised
 
@@ -168,8 +146,6 @@ No state changing tests ran against the deployed Neon database, Resend delivery,
 - Capture GitHub rate limit and partial response behavior.
 - Verify scheduled job lease renewal and recovery after a forced termination.
 
-
-
 ### Performance evidence is limited to local build output
 
 > **Status**: configuration corrected, real user effect unmeasured.
@@ -183,11 +159,7 @@ The global image optimization bypass was removed and the production build passed
 - Profile slow database queries and GitHub backed request waterfalls under representative data and traffic.
 - Add budgets only once measurements identify stable thresholds.
 
-
-
 ## Policy and product decisions
-
-
 
 ### Production observability and health readiness are not established
 
@@ -205,8 +177,6 @@ This was not automated because a vendor choice changes data processing, retentio
 - Alert on cron authorization failures, limiter denials, GitHub quota, job lease expiry, email failures, database saturation and elevated route errors.
 - Document retry, rollback and incident recovery ownership.
 
-
-
 ### Forwarded client IPs require a trusted proxy
 
 > **Status**: deployment dependent.
@@ -218,8 +188,6 @@ Rate limit counters are shared in PostgreSQL and their keys are HMAC hashed, but
 - Configure the edge proxy to strip client supplied forwarding headers and set its own trusted value.
 - Prefer a platform specific verified client IP header once the deployment platform is final.
 - Add an integration test at the deployed edge, not only inside Next.js.
-
-
 
 ### Historical magic link metadata needs a retention decision
 
@@ -235,8 +203,6 @@ Expired historical rows may keep old metadata until the row is deleted or a clea
 - Run a deployment reviewed cleanup that removes the legacy metadata field or expired rows without exposing token values in logs.
 - Confirm backup expiry and restore procedures do not retain authentication credentials longer than intended.
 
-
-
 ### Email guarantees depend on stable event keys
 
 > **Status**: resolved for current workflows, convention needed for future email types.
@@ -251,8 +217,6 @@ A future email call site that omits `idempotencyKey` gets only a per attempt key
 - Add a code review or lint convention around `sendEmail` call sites.
 - Exercise timeout after provider acceptance against a Resend test account.
 
-
-
 ### Public icon and social preview ownership is undocumented
 
 > **Status**: font provenance fixed, remaining assets need owner confirmation.
@@ -265,8 +229,6 @@ The bundled Badeen Display and Geist fonts now carry upstream hashes, provenance
 - Keep source and license or permission evidence where applicable.
 - Confirm the CC-BY-NC-SA-4.0 license is compatible with the intended distribution of each asset.
 
-
-
 ### Stored theme and private profile preferences have no product behavior
 
 > **Status**: intentionally outside every audit scope.
@@ -277,8 +239,6 @@ The database and account APIs store `theme` and `privateProfile`, but no global 
 
 - Define the intended theme application and persistence lifecycle.
 - Define which profile data is public, the affected routes and server side privacy enforcement, before `privateProfile` is treated as a security boundary.
-
-
 
 ## Excluded by design
 

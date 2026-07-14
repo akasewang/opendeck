@@ -18,7 +18,7 @@ The security phase reviewed 252 first party files across 51 inventory shards. Al
 
 All eight are fixed in the current source. Severity follows the security scan's own rating.
 
-| # | Finding | Severity | Surface |
+| | Finding | Severity | Surface |
 | :-- | :-- | :-- | :-- |
 | 1 | Public repository comparison request amplification | ![Medium](https://img.shields.io/badge/Medium_P2-FFBD2E?style=flat-square) | `api/repos/compare/route.ts` |
 | 2 | Authenticated contributor lookup request amplification | ![Low](https://img.shields.io/badge/Low_P3-61DAFB?style=flat-square) | `api/repos/contributors/route.ts` |
