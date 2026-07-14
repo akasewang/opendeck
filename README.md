@@ -1,192 +1,199 @@
 # OpenDeck
 
-OpenDeck is a public discovery engine for useful open source repositories. It serves curated, searchable GitHub project data from a local Postgres mirror so public pages can stay fast without calling GitHub during normal browsing.
+A public discovery engine for open source repositories that are actually ready for a contribution. OpenDeck mirrors curated GitHub project data into Postgres, scores every repository for contribution readiness and serves the result from its own database, so browsing stays fast and never depends on the GitHub API.
 
-## Stack
+[![Live Site](https://img.shields.io/badge/Live_Site-000000?style=for-the-badge&logo=vercel&logoColor=white)](https://opendeck.akasewang.me)
+[![Next.js](https://img.shields.io/badge/Next.js_15-000000?style=for-the-badge&logo=nextdotjs&logoColor=white)](#)
+[![React](https://img.shields.io/badge/React_19-61DAFB?style=for-the-badge&logo=react&logoColor=black)](#)
+[![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)](#)
+[![Tailwind CSS v4](https://img.shields.io/badge/Tailwind_v4-38B2AC?style=for-the-badge&logo=tailwindcss&logoColor=white)](#)
+[![Drizzle ORM](https://img.shields.io/badge/Drizzle_ORM-C5F74F?style=for-the-badge&logo=drizzle&logoColor=black)](#)
+[![Neon](https://img.shields.io/badge/Neon_Serverless-00E599?style=for-the-badge&logo=neon&logoColor=black)](#)
+[![Framer Motion](https://img.shields.io/badge/Framer_Motion-0055FF?style=for-the-badge&logo=framer&logoColor=white)](#)
+[![Biome](https://img.shields.io/badge/Biome-FFBD2E?style=for-the-badge&logo=biome&logoColor=black)](#)
+[![GitHub Actions](https://img.shields.io/badge/GitHub_Actions-2088FF?style=for-the-badge&logo=githubactions&logoColor=white)](#)
 
-- Next.js 15 App Router
-- React 19
-- Strict TypeScript
-- Tailwind CSS v4
-- Drizzle ORM with Neon Postgres
-- npm
+![OpenDeck](public/landing-preview.jpg)
 
-## Local Setup
+---
+
+## What it does
+
+Most "find an open source project" tools rank by stars. OpenDeck ranks by whether you could realistically open a pull request this week.
+
+| | |
+| :-- | :-- |
+| **Contribution gate** | Every candidate is scored before it is stored. A repository is only indexed if it is public, active, licensed, has a primary language, has open issues and carries description or README context. |
+| **Curated corpus** | Discovery is bounded at **1300 repositories**. Once the cap is reached, ingestion refreshes what is known instead of endlessly widening the pool. |
+| **Noise filtering** | Resource lists, roadmaps, interview prep collections, forks, mirrors, templates and archived repositories are rejected outright. |
+| **Fast by default** | Public pages read from the Postgres mirror. GitHub is called by background jobs, not by visitors. |
+| **Account workspace** | Save repositories, build collections, follow orgs, keep private notes, track contribution stage, request alerts on good first issues and export the lot. |
+
+## Technology Stack
+
+- **Framework**: Next.js 15 (App Router) + React 19
+- **Language**: TypeScript (strict mode)
+- **Styling**: Tailwind CSS v4
+- **Motion and primitives**: Framer Motion, Radix UI
+- **Database**: Neon Postgres
+- **ORM**: Drizzle ORM
+- **Auth**: Email magic links, hashed session tokens
+- **Email Service**: Resend
+- **Tooling**: Biome, ESLint, tsx test runner
+- **Automation**: GitHub Actions, Vercel
+
+## Quick start
 
 ```sh
 npm install
-cp .env.example .env
+cp .env.example .env    # add DATABASE_URL and GITHUB_TOKEN
 npm run db:migrate
 npm run dev
 ```
 
-Open `http://localhost:3000`.
+The app runs at `http://localhost:3000`. To populate a fresh database, run `npm run ingest:discovery` once, then `npm run ingest:trending`.
 
-## Environment
+### Environment
 
-```env
-DATABASE_URL=
-NEXT_PUBLIC_APP_URL=https://opendeck.akasewang.me
-GITHUB_TOKEN=
-GH_INGEST_TOKEN=
-CRON_SECRET=
-AUTH_SECRET=
-AUTH_ADMIN_EMAILS=
-AUTH_ALLOWED_EMAILS=
-AUTH_ALLOWED_DOMAINS=
-AUTH_INVITE_ONLY=false
-EMAIL_FROM=
-RESEND_API_KEY=
-```
+| Variable | Scope | Required | Purpose |
+| :-- | :-- | :-- | :-- |
+| `DATABASE_URL` | server | yes | Postgres connection for the app and every operational command. |
+| `NEXT_PUBLIC_APP_URL` | public | yes | Canonical URLs, sitemap entries and share previews. |
+| `GITHUB_TOKEN` | server | yes | GitHub API reads. |
+| `GH_INGEST_TOKEN` | server | no | Ingestion specific override. Falls back to `GITHUB_TOKEN`. |
+| `AUTH_SECRET` | server | production | Signs session cookies. Minimum 32 characters in production. |
+| `CRON_SECRET` | server | production | Protects the hosted ingestion trigger. |
+| `EMAIL_FROM`, `RESEND_API_KEY` | server | production | Login links, digests and alerts. |
+| `AUTH_ADMIN_EMAILS` | server | no | Comma separated. Only these emails, or users created through an admin invite, become admins. |
+| `AUTH_ALLOWED_EMAILS`, `AUTH_ALLOWED_DOMAINS` | server | no | Comma separated signup allowlists. |
+| `AUTH_INVITE_ONLY` | server | no | Set to `true` to require an invite link for signup. |
 
-`DATABASE_URL` is required for the app and operational commands. `NEXT_PUBLIC_APP_URL` is public and is used for canonical URLs, sitemap entries and share previews. `GITHUB_TOKEN` is server only and is used for GitHub API reads. `GH_INGEST_TOKEN` is an optional ingestion-specific override and falls back to `GITHUB_TOKEN`. `CRON_SECRET` protects hosted ingestion triggers in production. `AUTH_SECRET` signs auth session cookies and must be at least 32 characters in production.
+Authentication is email magic links only. Sign in opens as a modal from any page, and `/auth` survives only as a redirect for older links.
 
-`AUTH_ADMIN_EMAILS`, `AUTH_ALLOWED_EMAILS` and `AUTH_ALLOWED_DOMAINS` are comma separated. Only emails listed in `AUTH_ADMIN_EMAILS` or users created through an admin invite become admins. Set `AUTH_INVITE_ONLY=true` to require invite links for signup. If allowed emails/domains or database allowlist rules exist, signup must match them unless the user has a valid invite.
+### Commands
 
-If an older local database already promoted the first registered user, run `npm run auth:sync-admins` to preview persisted role changes, then `npm run auth:sync-admins -- --apply` to align `auth_users.role` with `AUTH_ADMIN_EMAILS`.
+| Command | Does |
+| :-- | :-- |
+| `npm run dev` / `build` / `start` | Next.js lifecycle. |
+| `npm test` | Node test runner over `src/**/*.test.ts` via `tsx`. |
+| `npm run lint` | ESLint plus Biome, warnings treated as errors. |
+| `npm run typecheck` | `tsc --noEmit`. |
+| `npm run format` | Biome formatter. |
+| `npm run db:generate` / `db:migrate` | Author and apply Drizzle migrations. |
+| `npm run ingest:discovery` | Full discovery sweep across search lanes. |
+| `npm run ingest:trending` | Recently active contribution ready repositories. |
+| `npm run ingest:metadata` | Refresh the stalest stored repositories. |
+| `npm run auth:sync-admins` | Align `auth_users.role` with `AUTH_ADMIN_EMAILS`. Add `-- --apply` to write. |
 
-Authentication uses email magic links. Sign in opens as a modal from any page; `/auth` remains only as a compatibility redirect for older links. `EMAIL_FROM` and `RESEND_API_KEY` are required in production for login links, account digests and alerts.
-
-## Commands
-
-```sh
-npm run dev
-npm run build
-npm run start
-npm test
-npm run lint
-npm run format
-npm run db:migrate
-npm run ingest:trending
-npm run ingest:discovery
-npm run ingest:metadata
-```
+Every operational command routes through the typed entrypoint in `src/operations/cli.ts`.
 
 ## Architecture
 
-OpenDeck indexes selected public repositories into Postgres, scores them for contribution readiness and serves public dashboard pages from a local mirror. Dashboard lists remain public, while row expansion requires an account session.
-
-### Source Map
-
-- `src/app`: pages, layouts, metadata routes and route handlers
-- `src/components`: genuinely shared brand, layout, UI, effect and transition components
-- `src/config`: application configuration and validated server environment access
-- `src/db`: Drizzle schema and database client
-- `src/features`: domain modules for account, admin, auth, collections, dashboard, ingestion, landing, organizations and repositories
-- `src/hooks`: app-wide reusable client hooks
-- `src/lib`: infrastructure integrations for API inputs, email, GitHub, security and SEO
-- `src/utils`: generic pure helpers
-- `src/operations`: typed operational command entrypoints for migrations, ingestion, admin sync and generated data
-- `drizzle`: migrations and snapshots
-
-Feature modules use the directories they need from `api`, `components`, `constants`, `data`, `hooks`, `motion`, `providers`, `services`, `types` and `utils`. Browser-facing API clients and request caches belong in a feature's `api` directory; server-side domain workflows belong in `services`; feature animation variants belong in `motion` or beside their owning component. A helper moves to `src/utils` or a component to `src/components` only when it is domain-independent and reused across features.
-
-### Runtime Flow
-
-```text
-GitHub API -> ingestion jobs -> normalization -> contribution gate -> Postgres mirror -> API routes -> public UI
+```mermaid
+flowchart LR
+    A[GitHub API] --> B[Ingestion jobs]
+    B --> C[Normalization]
+    C --> D{Contribution gate}
+    D -- rejected --> E[Skipped]
+    D -- accepted --> F[(Postgres mirror)]
+    F --> G[API routes]
+    G --> H[Public UI]
 ```
 
-Discovery and trending jobs query focused GitHub search lanes from `src/features/ingestion/services/ingestion-sources.ts`. Repository data is normalized by `repository-ingestion-service.ts`, scored by `src/features/repositories/services/contribution-readiness.ts` and stored with Drizzle.
+Discovery and trending jobs query focused GitHub search lanes defined in `src/features/ingestion/services/ingestion-sources.ts`. Results are normalized by `repository-ingestion-service.ts`, scored by `src/features/repositories/services/contribution-readiness.ts` and written with Drizzle. Public pages never touch the GitHub API during normal browsing.
 
-The repository corpus is bounded by `DEFAULT_REPOSITORY_CORPUS_TARGET`. When the cap is reached, ingestion updates known repositories and skips unknown candidates.
+### Ingestion schedule
 
-A contribution-ready repository must be public, active, licensed, have a primary language, have open issues and include description or README context. Resource lists, roadmaps, interview-prep collections, forks, mirrors, templates and archived repositories are blocked.
+Ingestion runs on GitHub Actions rather than platform crons, because the free hosting tier caps cron functions well below what a multi minute sweep needs.
 
-### Routes
+| Workflow | Schedule | Work |
+| :-- | :-- | :-- |
+| `ingest-trending.yml` | hourly, `0 * * * *` | Refreshes recently active repositories. |
+| `ingest-daily.yml` | daily, `0 2 * * *` UTC | Full discovery sweep, then refreshes the 50 stalest repositories. |
 
-- `/`: landing page with animated repository scatter
-- `/info`: product explanation and project links
-- `/dashboard`: curated repository overview
-- `/dashboard/compare`: side-by-side repository comparison
-- `/dashboard/trending`: recently active contribution-ready repositories
-- `/dashboard/discover`: filterable repository search
-- `/dashboard/organizations`: organization summaries and mirrored repository details
-- `/dashboard/repos/[owner]/[repo]`: repository detail workspace
-- `/dashboard/home`: logged-in workspace for saved repos, collections, follows, pipeline, preferences, exports and security
-- `/dashboard/admin`: admin-only user, invite and allowlist management
-- `/shared/collections/[slug]`: public shared collection page
+Both workflows also accept a manual `workflow_dispatch`. `/api/cron/ingest` remains available as an authenticated HTTP trigger.
 
-### API Routes
+### Source map
 
-- `/api/curated`
-- `/api/github-trending`
-- `/api/github-discover`
-- `/api/github-overview`
-- `/api/organizations`
-- `/api/organizations/profile`
-- `/api/search`
-- `/api/repos/compare`
-- `/api/repos/contributors`
-- `/api/repos/detail`
-- `/api/repos/document`
-- `/api/auth/magic-link`
-- `/api/auth/magic-link/callback`
-- `/api/auth/email-verification` (retired-link compatibility redirect)
-- `/api/auth/session`
-- `/api/auth/sign-out`
-- `/api/account/*`
-- `/api/admin/*`
-- `/api/github-stars`
-- `/api/shared/collections/[slug]`
-- `/api/cron/ingest`
-- `/api/cron/account-alerts`
+```text
+src/
+├── app/          pages, layouts, metadata routes, route handlers
+├── components/   shared brand, layout, ui, effect and transition components
+├── config/       app configuration and validated server environment access
+├── db/           Drizzle schema and database client
+├── features/     account · admin · auth · collections · dashboard
+│                 ingestion · landing · organizations · repositories
+├── hooks/        app wide client hooks
+├── lib/          API inputs, email, GitHub, security, SEO
+├── operations/   typed operational command entrypoints
+└── utils/        generic pure helpers
+drizzle/          migrations and snapshots
+```
 
-Route handlers validate enum-like query values and keep public response shapes stable.
+A feature owns the directories it needs from `api`, `components`, `constants`, `data`, `hooks`, `motion`, `providers`, `services`, `types` and `utils`. Browser facing API clients live in a feature's `api` directory, server side domain workflows live in `services`. Code only graduates to `src/components`, `src/hooks` or `src/utils` once it is domain independent and reused across features.
 
-Repository and organization list APIs remain public. Detail-style APIs used by row expansion, including `/api/github-overview`, `/api/organizations/profile` and `/api/repos/contributors`, require a valid account session.
+Files are lowercase kebab-case, React components and types are PascalCase, functions and hooks are camelCase.
 
-### Server and Client Boundaries
+<details>
+<summary><b>Pages</b></summary>
 
-Server-only code lives in `src/db`, feature `services`, server infrastructure under `src/lib`, route handlers and `src/operations`. These modules can read secrets, issue auth tokens, sign sessions, call GitHub with authorization headers and access the database. Browser-only infrastructure is isolated under feature `api` directories or `src/lib/browser`.
+| Route | Purpose |
+| :-- | :-- |
+| `/` | Landing page with the animated repository scatter. |
+| `/info` | Product explanation and project links. |
+| `/dashboard` | Curated repository overview. |
+| `/dashboard/trending` | Recently active contribution ready repositories. |
+| `/dashboard/discover` | Filterable repository search. |
+| `/dashboard/compare` | Repository comparison. |
+| `/dashboard/organizations` | Organization summaries and mirrored repository detail. |
+| `/dashboard/repos/[owner]/[repo]` | Repository detail workspace. |
+| `/dashboard/home` | Account workspace: saved repos, collections, follows, pipeline, preferences, exports, sessions. |
+| `/dashboard/admin` | Admin only user, invite and allowlist management. |
+| `/shared/collections/[slug]` | Public shared collection page. |
 
-Client-safe code includes UI components, browser hooks, public constants and pure formatting helpers. Client code must not import `serverEnv`, `db`, ingestion modules or GitHub token helpers. The public UI fetches local API routes instead.
+</details>
 
-Feature modules own their API clients, components, hooks, motion, providers, services, constants, types and feature-specific data. Shared primitives stay in `src/components/ui`, while cross-feature hooks and pure helpers belong in `src/hooks` and `src/utils` respectively. Files use lowercase kebab-case, React components and types use PascalCase, and functions and hooks use camelCase.
+<details>
+<summary><b>API routes</b></summary>
 
-### UI, Motion and SEO
+**Public.** `/api/curated`, `/api/github-trending`, `/api/github-discover`, `/api/organizations`, `/api/search`, `/api/repos/compare`, `/api/repos/detail`, `/api/repos/document`, `/api/github-stars`, `/api/shared/collections/[slug]`
 
-Global semantic tokens live in `src/app/globals.css`. Component-specific styling stays in component class names unless it is genuinely shared.
+**Session required.** `/api/github-overview`, `/api/organizations/profile`, `/api/repos/contributors`, `/api/account/*`
 
-Shared motion timing and spring primitives live in `src/config/motion.ts`; component and feature variants stay with their owner. Motion-heavy UI respects `prefers-reduced-motion`. Page curtain transitions are skipped between dashboard routes and for reduced-motion users. The repository scatter falls back to a static layout for reduced-motion users.
+**Admin.** `/api/admin/*`
 
-App Router metadata defines titles, descriptions, canonical URLs, Open Graph metadata and Twitter Card metadata. `src/app/sitemap.ts` and `src/app/robots.ts` are generated from public site configuration. Route-specific `opengraph-image.tsx` files provide generated cards, while the landing page uses `public/landing-preview.jpg` from page metadata.
+**Auth.** `/api/auth/magic-link`, `/api/auth/magic-link/callback`, `/api/auth/session`, `/api/auth/sign-out`
+
+**Scheduled.** `/api/cron/ingest`, `/api/cron/account-alerts`
+
+List style endpoints stay public. The detail endpoints behind dashboard row expansion require a valid account session. Route handlers validate enum like query values and keep public response shapes stable.
+
+</details>
 
 ## Security
 
-Server secrets are read through `src/config/server-env.ts`. `DATABASE_URL`, `GITHUB_TOKEN`, `GH_INGEST_TOKEN`, `CRON_SECRET` and `AUTH_SECRET` are server only. `NEXT_PUBLIC_APP_URL` is public and must not contain secrets.
+- **Secrets stay server side.** They are read only through `src/config/server-env.ts`. Client code never imports the database client, GitHub token rotation or ingestion modules. Only `NEXT_PUBLIC_APP_URL` is public.
+- **Sessions.** Magic link auth with HTTP only, same site cookies backed by hashed session tokens in Postgres.
+- **Input validation.** Route handlers validate enum like values such as repository sort, curated source and ingest kind. Repository full names are validated before any GitHub contributor lookup. Errors return stable public shapes and never leak stack traces.
+- **Headers.** `next.config.ts` sets conservative security headers, and production adds HSTS. A full Content Security Policy is deliberately deferred until every external asset, font, image and API source is verified in the deployed environment.
+- **Known gap.** Rate limiting is in memory, which is not reliable across serverless instances. Abuse prone public endpoints need a shared store or edge rate limiting before heavy traffic.
 
-Client components never import the database client, GitHub token rotation or ingestion modules.
-
-Authentication uses email magic links. Session cookies are HTTP-only, same-site and backed by hashed session tokens in Postgres.
-
-Logged-in users can save repositories, create collections, follow repositories or organizations, store private notes, track contribution stage, hide or dismiss results, review recent history, tune recommendation preferences, request good-first-issue alerts, configure digests, export saved repositories and manage sessions. `/api/cron/account-alerts` can be scheduled after metadata ingestion to generate unread alerts for saved repositories with good-first-issue signals. Admin users can assign roles, suspend accounts, create invites and manage email/domain allowlist rules.
-
-Route handlers validate enum-like values such as repository sort, curated source and ingest kind. Repository full names are validated before GitHub contributor lookups. API errors return stable public shapes and avoid exposing stack traces.
-
-`next.config.ts` sets conservative security headers that do not require a fragile Content Security Policy. The production build also sends HSTS. A full CSP should be added only after testing every external asset, font, image and API source in the deployed environment.
-
-Abuse prone public endpoints can still benefit from persistent rate limiting at the hosting edge or a shared store. In memory rate limits are not reliable across serverless instances, so that work should be designed with the deployment target.
-
-## Testing and Verification
-
-The repository uses Node's test runner through `tsx` for focused TypeScript regression tests, plus linting, formatting, type checking and production build verification.
+## Verification
 
 ```sh
 npm test
 npm run lint
-npx biome check .
-npx tsc --noEmit --incremental false
+npm run typecheck
 npm run build
 npm audit --omit=dev
 ```
 
-## Deployment Notes
+## Deployment
 
-Set `DATABASE_URL`, `NEXT_PUBLIC_APP_URL`, `GITHUB_TOKEN`, `GH_INGEST_TOKEN`, `CRON_SECRET`, `AUTH_SECRET`, `EMAIL_FROM` and `RESEND_API_KEY` in the hosting environment. Run migrations before relying on ingestion jobs, magic link authentication, account alerts or digests. The included GitHub Actions workflows use `DATABASE_URL` and `GH_INGEST_TOKEN` secrets.
+Set `DATABASE_URL`, `NEXT_PUBLIC_APP_URL`, `GITHUB_TOKEN`, `GH_INGEST_TOKEN`, `CRON_SECRET`, `AUTH_SECRET`, `EMAIL_FROM` and `RESEND_API_KEY` in the hosting environment. Run migrations before relying on ingestion, magic link authentication, alerts or digests. The GitHub Actions workflows read `DATABASE_URL` and `GH_INGEST_TOKEN` from repository secrets.
 
 ## License
 
-OpenDeck is licensed under the [Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License](https://creativecommons.org/licenses/by-nc-sa/4.0/). See [`LICENSE`](LICENSE) for the license notice and legal-code link.
+Licensed under [Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International](https://creativecommons.org/licenses/by-nc-sa/4.0/). See [`LICENSE`](LICENSE).
 
 Copyright (c) 2026 Akash Dewangan.
