@@ -21,7 +21,7 @@ import { RefreshButton } from '@/components/ui/refresh-button'
 import { ScrollShadow } from '@/components/ui/scroll-shadow'
 import { SearchBar } from '@/components/ui/search-bar'
 import Select from '@/components/ui/select'
-import { Skeleton } from '@/components/ui/skeleton'
+import { Skeleton, skeletonStagger } from '@/components/ui/skeleton'
 import { ColorfulTag, SimpleTag } from '@/components/ui/tag'
 import { toast } from '@/components/ui/toast'
 import { API_ROUTES, appRoute, withQuery } from '@/config/routes'
@@ -37,6 +37,7 @@ import {
 import type { Organization } from '@/features/organizations/types/organization'
 import { isOrganization } from '@/features/organizations/utils/organization-response-validation'
 import { formatDate, getLanguageTagStyle } from '@/features/repositories/utils/repository-display'
+import { useSkeletonRowCount } from '@/hooks/use-skeleton-row-count'
 import { isRecord } from '@/lib/api/input-normalization'
 import { apiErrorMessage } from '@/lib/api/errors'
 import { cn } from '@/utils/cn'
@@ -63,6 +64,19 @@ const OWNER_HEADER_CLASS =
   'left-0 z-30 min-w-[14rem] border-r border-r-row-divider bg-sidebar sm:min-w-[16rem] md:min-w-[18rem]'
 
 const TOP_REPOSITORY_COLUMN_CLASS = 'min-w-[16rem] max-w-[26rem] md:min-w-[20rem] md:max-w-[34rem]'
+
+const SKELETON_OWNER_WIDTHS = ['w-32', 'w-24', 'w-40', 'w-28', 'w-44', 'w-36', 'w-24', 'w-40']
+const SKELETON_LANGUAGE_WIDTHS = ['w-20', 'w-14', 'w-16', 'w-24']
+const SKELETON_COUNT_WIDTHS = ['w-10', 'w-14', 'w-8', 'w-12']
+const SKELETON_REPO_WIDTHS = ['w-44', 'w-64', 'w-36', 'w-56', 'w-48']
+const SKELETON_FIELD_WIDTHS = [
+  'max-w-48',
+  'max-w-36',
+  'max-w-56',
+  'max-w-40',
+  'max-w-52',
+  'max-w-32',
+]
 
 const GRID_STAGGER: Variants = {
   hidden: {},
@@ -396,26 +410,32 @@ function OrganizationToolbar({
   )
 }
 
-function OrganizationSkeleton() {
+function OrganizationSkeleton({ index = 0 }: { index?: number }) {
+  const ownerWidth = SKELETON_OWNER_WIDTHS[index % SKELETON_OWNER_WIDTHS.length]
+  const languageWidth = SKELETON_LANGUAGE_WIDTHS[index % SKELETON_LANGUAGE_WIDTHS.length]
+  const reposWidth = SKELETON_COUNT_WIDTHS[index % SKELETON_COUNT_WIDTHS.length]
+  const starsWidth = SKELETON_COUNT_WIDTHS[(index + 2) % SKELETON_COUNT_WIDTHS.length]
+  const repoWidth = SKELETON_REPO_WIDTHS[index % SKELETON_REPO_WIDTHS.length]
+
   return (
-    <tr>
+    <tr style={skeletonStagger(index)}>
       <td className={`${TABLE_CELL_CLASS} ${OWNER_COLUMN_CLASS}`}>
         <div className="flex items-center gap-2.5">
           <Skeleton className="h-6 w-6 shrink-0" />
-          <Skeleton className="h-3.5 w-32 max-w-full" />
+          <Skeleton className={cn('h-3.5 max-w-full', ownerWidth)} />
         </div>
       </td>
       <td className={TABLE_CELL_CLASS}>
-        <Skeleton className="h-5 w-20" />
+        <Skeleton className={cn('h-5', languageWidth)} />
       </td>
       <td className={TABLE_CELL_CLASS}>
-        <Skeleton className="h-3.5 w-12" />
+        <Skeleton className={cn('h-3.5', reposWidth)} />
       </td>
       <td className={TABLE_CELL_CLASS}>
-        <Skeleton className="h-3.5 w-12" />
+        <Skeleton className={cn('h-3.5', starsWidth)} />
       </td>
       <td className={cn(TABLE_CELL_CLASS, TOP_REPOSITORY_COLUMN_CLASS)}>
-        <Skeleton className="h-3.5 w-44 max-w-full" />
+        <Skeleton className={cn('h-3.5 max-w-full', repoWidth)} />
       </td>
     </tr>
   )
@@ -467,7 +487,7 @@ function OrganizationDetails({ organization }: { organization: Organization }) {
           {isProfileLoading ? (
             <div className="space-y-2">
               <Skeleton className="h-3.5 w-full max-w-2xl" />
-              <Skeleton className="h-3.5 w-3/4 max-w-xl" />
+              <Skeleton style={skeletonStagger(1)} className="h-3.5 w-3/4 max-w-xl" />
             </div>
           ) : profileError ? (
             <p className="line-clamp-3 text-pretty text-sm leading-relaxed text-muted-foreground">
@@ -528,7 +548,14 @@ function OrganizationDetails({ organization }: { organization: Organization }) {
           {isProfileLoading ? (
             <div className="grid gap-x-6 gap-y-2 @sm:grid-cols-2">
               {Array.from({ length: 6 }).map((_, index) => (
-                <Skeleton key={index} className="h-4 w-full max-w-48" />
+                <Skeleton
+                  key={index}
+                  style={skeletonStagger(index)}
+                  className={cn(
+                    'h-4 w-full',
+                    SKELETON_FIELD_WIDTHS[index % SKELETON_FIELD_WIDTHS.length],
+                  )}
+                />
               ))}
             </div>
           ) : profileError ? (
@@ -818,6 +845,7 @@ export default function OrganizationsPage() {
   const authPromptWasOpen = useRef(false)
   const { user, isLoading: isAuthLoading, isAuthOpen, openAuth } = useAuth()
   const prefersReducedMotion = useReducedMotion()
+  const skeletonRowCount = useSkeletonRowCount({ node: scrollNode })
 
   useEffect(() => {
     const controller = new AbortController()
@@ -1030,7 +1058,11 @@ export default function OrganizationsPage() {
             onRefresh={() => setRefreshKey((key) => key + 1)}
             isRefreshing={isLoading}
           />
-          <ScrollShadow wrapperClassName="min-h-0 flex-1" className="w-full">
+          <ScrollShadow
+            wrapperClassName="min-h-0 flex-1"
+            className="w-full"
+            viewportRef={setScrollNode}
+          >
             <table
               aria-hidden="true"
               className="w-max min-w-full table-auto border-separate border-spacing-0"
@@ -1049,8 +1081,8 @@ export default function OrganizationsPage() {
                 </tr>
               </thead>
               <tbody>
-                {Array.from({ length: 9 }).map((_, i) => (
-                  <OrganizationSkeleton key={i} />
+                {Array.from({ length: skeletonRowCount }).map((_, i) => (
+                  <OrganizationSkeleton key={i} index={i} />
                 ))}
               </tbody>
             </table>

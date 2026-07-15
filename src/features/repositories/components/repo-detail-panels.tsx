@@ -7,7 +7,7 @@ import { Button, buttonVariants } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { TextArea } from '@/components/ui/text-area'
 import { ScrollShadow } from '@/components/ui/scroll-shadow'
-import { Skeleton } from '@/components/ui/skeleton'
+import { Skeleton, skeletonStagger } from '@/components/ui/skeleton'
 import { StatusPill } from '@/components/ui/status-pill'
 import { SimpleTag } from '@/components/ui/tag'
 import { toast } from '@/components/ui/toast'
@@ -31,6 +31,8 @@ import { formatNumber } from '@/utils/format-number'
 
 const COLUMN_LABEL_CLASS =
   'shrink-0 border-b border-b-row-divider bg-sidebar px-4 py-2 text-2xs font-semibold uppercase tracking-normal text-muted-foreground/70'
+
+const CONTRIBUTOR_NAME_WIDTHS = ['w-32', 'w-24', 'w-40', 'w-28', 'w-36', 'w-20']
 
 type RepositoryDetailRepo = RepositoryInsight['repo']
 type Issue = RepositoryInsight['issues'][number]
@@ -357,10 +359,19 @@ export function ContributorsPanel({
       <PanelHeader icon="ri:team-line" title="Contributors" count={totalCount} />
       {isLoading ? (
         <div className="min-h-0 flex-1 divide-y divide-border/30 overflow-hidden pb-12">
-          {Array.from({ length: 5 }, (_, index) => (
-            <div key={index} className="flex items-center gap-3 px-4 py-2.5">
+          {Array.from({ length: 9 }, (_, index) => (
+            <div
+              key={index}
+              style={skeletonStagger(index)}
+              className="flex items-center gap-3 px-4 py-2.5"
+            >
               <Skeleton className="h-7 w-7 rounded-full" />
-              <Skeleton className="h-3 w-32" />
+              <Skeleton
+                className={cn(
+                  'h-3',
+                  CONTRIBUTOR_NAME_WIDTHS[index % CONTRIBUTOR_NAME_WIDTHS.length],
+                )}
+              />
             </div>
           ))}
         </div>

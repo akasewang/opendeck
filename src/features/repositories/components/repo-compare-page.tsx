@@ -7,7 +7,7 @@ import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } fro
 import { Card } from '@/components/ui/card'
 import { EmptyState } from '@/components/ui/empty-state'
 import { ErrorBanner } from '@/components/ui/error-banner'
-import { Skeleton } from '@/components/ui/skeleton'
+import { Skeleton, SkeletonPanel } from '@/components/ui/skeleton'
 import { toast } from '@/components/ui/toast'
 import { API_ROUTES, APP_ROUTES, appRoute, withQuery } from '@/config/routes'
 import { MOTION_SPRING } from '@/config/motion'
@@ -385,7 +385,7 @@ export default function ComparePage() {
       {isLoading ? (
         <div className="space-y-3">
           <Skeleton className="h-16" />
-          <Skeleton className="h-96" />
+          <SkeletonPanel className="h-96" />
         </div>
       ) : error ? (
         <ErrorBanner message={error} onRetry={() => void runCompare(selected)} />

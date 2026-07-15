@@ -7,7 +7,7 @@ import { type KeyboardEvent, useEffect, useId, useMemo, useRef, useState } from 
 import { fieldVariants } from '@/components/ui/field'
 import { Kbd } from '@/components/ui/kbd'
 import { ScrollShadow } from '@/components/ui/scroll-shadow'
-import { Skeleton } from '@/components/ui/skeleton'
+import { Skeleton, skeletonStagger } from '@/components/ui/skeleton'
 import { API_ROUTES, withQuery } from '@/config/routes'
 import { MOTION_SPRING } from '@/config/motion'
 import type { RepositoryApiItem } from '@/features/repositories/types/repository'
@@ -240,7 +240,11 @@ export function RepoSearchInput({
             {showSkeletons ? (
               <div className="space-y-1 p-1.5">
                 {Array.from({ length: 3 }, (_, index) => (
-                  <div key={index} className="flex items-center gap-3 rounded-md px-2.5 py-2">
+                  <div
+                    key={index}
+                    style={skeletonStagger(index)}
+                    className="flex items-center gap-3 rounded-md px-2.5 py-2"
+                  >
                     <Skeleton className="h-6 w-6 shrink-0 rounded-md" />
                     <div className="min-w-0 flex-1 space-y-1.5">
                       <Skeleton className="h-3.5 w-2/5" />

@@ -24,6 +24,7 @@ import { REPOSITORY_TABLE_COLUMNS } from '@/features/repositories/data/repositor
 import type { RepositoryListItem } from '@/features/repositories/types/repository'
 import type { RepositoryTableColumnKey } from '@/features/repositories/types/repository-table'
 import { repoKey } from '@/features/repositories/utils/repository-table-url-state'
+import { useSkeletonRowCount } from '@/hooks/use-skeleton-row-count'
 import { clearUrlParameter } from '@/lib/browser/url-state'
 import { cn } from '@/utils/cn'
 
@@ -106,7 +107,7 @@ export default function RepoTable({
   }
 
   const isEmpty = !data || data.length === 0
-  const skeletonCount = 10
+  const skeletonCount = useSkeletonRowCount({ node: scrollNode })
   const statusMessage = isLoading
     ? 'Loading repositories'
     : error

@@ -13,7 +13,7 @@ import {
   useState,
 } from 'react'
 import { ScrollShadow } from '@/components/ui/scroll-shadow'
-import { Skeleton } from '@/components/ui/skeleton'
+import { Skeleton, skeletonStagger } from '@/components/ui/skeleton'
 import { API_ROUTES } from '@/config/routes'
 import {
   FLOATING_LINK_CLASS,
@@ -518,6 +518,20 @@ function DocEmpty({ children }: { children: ReactNode }) {
   )
 }
 
+function DocLoadingLines() {
+  return (
+    <div className="space-y-3">
+      {Array.from({ length: 16 }, (_, i) => (
+        <Skeleton
+          key={i}
+          style={skeletonStagger(i)}
+          className={cn('h-3.5', i % 4 === 3 ? 'w-2/3' : i % 4 === 1 ? 'w-11/12' : 'w-full')}
+        />
+      ))}
+    </div>
+  )
+}
+
 function DocBody({
   active,
   state,
@@ -534,13 +548,7 @@ function DocBody({
       return <div className="readme-html" dangerouslySetInnerHTML={{ __html: readmeHtml }} />
     }
     if (state?.status === 'loading') {
-      return (
-        <div className="space-y-3">
-          {[0, 1, 2, 3, 4].map((i) => (
-            <Skeleton key={i} className={cn('h-3.5', i % 3 === 2 ? 'w-2/3' : 'w-full')} />
-          ))}
-        </div>
-      )
+      return <DocLoadingLines />
     }
     if (state?.status === 'error') {
       return <DocEmpty>{state.message}</DocEmpty>
@@ -559,13 +567,7 @@ function DocBody({
   }
 
   if (!state || state.status === 'loading') {
-    return (
-      <div className="space-y-3">
-        {[0, 1, 2, 3, 4].map((i) => (
-          <Skeleton key={i} className={cn('h-3.5', i % 3 === 2 ? 'w-2/3' : 'w-full')} />
-        ))}
-      </div>
-    )
+    return <DocLoadingLines />
   }
 
   if (state.status === 'error') {

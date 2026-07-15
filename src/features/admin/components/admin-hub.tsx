@@ -14,7 +14,7 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { ErrorBanner } from '@/components/ui/error-banner'
 import { Input } from '@/components/ui/input'
 import Select from '@/components/ui/select'
-import { Skeleton } from '@/components/ui/skeleton'
+import { Skeleton, SkeletonPanel } from '@/components/ui/skeleton'
 import { StatusPill } from '@/components/ui/status-pill'
 import { toast } from '@/components/ui/toast'
 import { API_ROUTES } from '@/config/routes'
@@ -187,14 +187,14 @@ export default function AdminHub() {
           <Skeleton className="h-6 w-32" />
           <Skeleton className="h-3.5 w-full max-w-xl" />
         </div>
-        <Skeleton className="h-[26rem] rounded-lg" />
+        <SkeletonPanel className="h-[26rem]" />
         <div className="grid gap-5 xl:grid-cols-2">
-          <Skeleton className="h-52 rounded-lg" />
-          <Skeleton className="h-52 rounded-lg" />
+          <SkeletonPanel className="h-52" />
+          <SkeletonPanel className="h-52" />
         </div>
         <div className="grid gap-5 xl:grid-cols-2">
-          <Skeleton className="h-[22rem] rounded-lg" />
-          <Skeleton className="h-[22rem] rounded-lg" />
+          <SkeletonPanel className="h-[22rem]" />
+          <SkeletonPanel className="h-[22rem]" />
         </div>
       </PageShell>
     )

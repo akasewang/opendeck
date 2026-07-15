@@ -393,6 +393,7 @@ body,
   background-repeat: no-repeat;
   background-position: -60% 0;
   animation: skeleton-shimmer 1.6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  animation-delay: var(--skeleton-delay, 0s);
 }
 
 @media (prefers-reduced-motion: reduce) {

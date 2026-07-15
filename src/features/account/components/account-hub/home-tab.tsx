@@ -9,7 +9,7 @@ import { DataPanel as Panel, DataPanelEmpty as PanelEmpty } from '@/components/u
 import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
 import Select from '@/components/ui/select'
-import { Skeleton } from '@/components/ui/skeleton'
+import { Skeleton, skeletonStagger } from '@/components/ui/skeleton'
 import { toast } from '@/components/ui/toast'
 import { API_ROUTES, appRoute } from '@/config/routes'
 import { MOTION_SPRING } from '@/config/motion'
@@ -240,9 +240,9 @@ function OnboardingPanel({
   )
 }
 
-function RecommendationRowSkeleton() {
+function RecommendationRowSkeleton({ index = 0 }: { index?: number }) {
   return (
-    <div className="flex items-center gap-3 px-3.5 py-3">
+    <div style={skeletonStagger(index)} className="flex items-center gap-3 px-3.5 py-3">
       <Skeleton className="h-6 w-6 shrink-0 rounded-md" />
       <div className="min-w-0 flex-1 space-y-1.5">
         <Skeleton className="h-3.5 w-40 max-w-full" />
@@ -398,7 +398,7 @@ function RecommendationsPanel({
           {isLoadingMore && (
             <div className="space-y-2">
               {Array.from({ length: 3 }, (_, index) => (
-                <RecommendationRowSkeleton key={index} />
+                <RecommendationRowSkeleton key={index} index={index} />
               ))}
             </div>
           )}

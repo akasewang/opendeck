@@ -6,11 +6,10 @@ import { Button, buttonVariants } from '@/components/ui/button'
 import { Card, cardVariants } from '@/components/ui/card'
 import CountPill from '@/components/ui/count-pill'
 import { EmptyState } from '@/components/ui/empty-state'
-import { Skeleton } from '@/components/ui/skeleton'
+import { Skeleton, SkeletonPanel, skeletonStagger } from '@/components/ui/skeleton'
 import { APP_ROUTES } from '@/config/routes'
 import PageShell from '@/features/dashboard/components/page-shell'
 import { formatNumber } from '@/utils/format-number'
-import { cn } from '@/utils/cn'
 
 export const PANEL_CLASS = cardVariants({ className: 'flex flex-col overflow-hidden' })
 
@@ -99,34 +98,15 @@ export function ExternalButton({
   )
 }
 
-function StatCardSkeleton() {
+function StatCardSkeleton({ index = 0 }: { index?: number }) {
   return (
-    <Card className="flex min-w-0 items-center gap-3 px-3 py-3">
+    <Card style={skeletonStagger(index)} className="flex min-w-0 items-center gap-3 px-3 py-3">
       <Skeleton className="h-8 w-5 shrink-0 rounded-md" />
       <div className="min-w-0 flex-1 space-y-1.5">
         <Skeleton className="h-2.5 w-16" />
         <Skeleton className="h-4 w-10" />
       </div>
     </Card>
-  )
-}
-
-function PanelSkeleton({ className, rows = 5 }: { className?: string; rows?: number }) {
-  return (
-    <div className={cn(PANEL_CLASS, className)}>
-      <div className="flex h-11 shrink-0 items-center gap-2 border-b border-border/40 px-4">
-        <Skeleton className="h-4 w-4 rounded-sm" />
-        <Skeleton className="h-3.5 w-28" />
-      </div>
-      <div className="min-h-0 flex-1 divide-y divide-border/30">
-        {Array.from({ length: rows }).map((_, index) => (
-          <div key={index} className="flex items-center gap-3 px-4 py-3">
-            <Skeleton className="h-3.5 min-w-0 flex-1" />
-            <Skeleton className="h-5 w-12 shrink-0" />
-          </div>
-        ))}
-      </div>
-    </div>
   )
 }
 
@@ -152,23 +132,23 @@ export function RepoDetailLoading() {
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         {Array.from({ length: 5 }).map((_, index) => (
-          <StatCardSkeleton key={index} />
+          <StatCardSkeleton key={index} index={index} />
         ))}
       </div>
 
       <div className="grid gap-5 xl:grid-cols-3">
-        <PanelSkeleton className="h-[28rem] xl:col-span-2" rows={6} />
-        <PanelSkeleton className="h-[28rem]" rows={6} />
+        <SkeletonPanel className="h-[28rem] xl:col-span-2" />
+        <SkeletonPanel className="h-[28rem]" />
       </div>
       <div className="grid gap-5 xl:grid-cols-3">
-        <PanelSkeleton className="h-[26rem] xl:col-span-2" rows={5} />
-        <PanelSkeleton className="h-[26rem]" rows={5} />
+        <SkeletonPanel className="h-[26rem] xl:col-span-2" />
+        <SkeletonPanel className="h-[26rem]" />
       </div>
       <div className="grid gap-5 xl:grid-cols-3">
-        <PanelSkeleton className="h-[36rem] xl:col-span-2" rows={8} />
-        <PanelSkeleton className="h-[36rem]" rows={8} />
+        <SkeletonPanel className="h-[36rem] xl:col-span-2" />
+        <SkeletonPanel className="h-[36rem]" />
       </div>
-      <PanelSkeleton className="h-[30rem]" rows={6} />
+      <SkeletonPanel className="h-[30rem]" />
     </PageShell>
   )
 }

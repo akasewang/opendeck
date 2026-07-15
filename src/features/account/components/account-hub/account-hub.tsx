@@ -5,7 +5,7 @@ import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { ErrorBanner } from '@/components/ui/error-banner'
-import { Skeleton } from '@/components/ui/skeleton'
+import { Skeleton, SkeletonPanel } from '@/components/ui/skeleton'
 import { MOTION_SPRING } from '@/config/motion'
 import { API_ROUTES, withQuery } from '@/config/routes'
 import {
@@ -32,48 +32,48 @@ function AccountHubTabSkeleton({ tab }: { tab: AccountHubTabId }) {
     case 'home':
       return (
         <div className="grid gap-5 xl:grid-cols-[1.7fr_1fr]">
-          <Skeleton className="h-[40rem]" />
+          <SkeletonPanel className="h-[40rem]" />
           <div className="flex h-[40rem] flex-col gap-5">
-            <Skeleton className="flex-1" />
-            <Skeleton className="flex-1" />
+            <SkeletonPanel className="min-h-0 flex-1" />
+            <SkeletonPanel className="min-h-0 flex-1" />
           </div>
         </div>
       )
     case 'pipeline':
       return (
         <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
-          <Skeleton className="h-[28rem]" />
-          <Skeleton className="h-[28rem]" />
-          <Skeleton className="h-[28rem]" />
-          <Skeleton className="h-[28rem]" />
+          <SkeletonPanel className="h-[28rem]" />
+          <SkeletonPanel className="h-[28rem]" />
+          <SkeletonPanel className="h-[28rem]" />
+          <SkeletonPanel className="h-[28rem]" />
         </div>
       )
     case 'collections':
       return (
         <div className="grid gap-5 lg:grid-cols-[22rem_1fr]">
-          <Skeleton className="h-[30rem]" />
-          <Skeleton className="h-[30rem]" />
+          <SkeletonPanel className="h-[30rem]" />
+          <SkeletonPanel className="h-[30rem]" />
         </div>
       )
     case 'searches':
       return (
         <div className="grid gap-5 lg:grid-cols-[22rem_1fr]">
-          <Skeleton className="h-[28rem]" />
-          <Skeleton className="h-[28rem]" />
+          <SkeletonPanel className="h-[28rem]" />
+          <SkeletonPanel className="h-[28rem]" />
         </div>
       )
     case 'preferences':
-      return <Skeleton className="h-[46rem]" />
+      return <SkeletonPanel className="h-[46rem]" />
     case 'security':
       return (
         <div className="grid gap-5">
-          <Skeleton className="h-[18rem]" />
-          <Skeleton className="h-[24rem]" />
-          <Skeleton className="h-[10.5rem]" />
+          <SkeletonPanel className="h-[18rem]" />
+          <SkeletonPanel className="h-[24rem]" />
+          <SkeletonPanel className="h-[10.5rem]" />
         </div>
       )
     default:
-      return <Skeleton className="h-[28rem]" />
+      return <SkeletonPanel className="h-[28rem]" />
   }
 }
 

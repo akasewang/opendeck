@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { DataPanel as Panel, DataPanelEmpty as PanelEmpty } from '@/components/ui/data-panel'
 import { EmptyState } from '@/components/ui/empty-state'
 import { RefreshButton } from '@/components/ui/refresh-button'
-import { Skeleton } from '@/components/ui/skeleton'
+import { Skeleton, skeletonStagger } from '@/components/ui/skeleton'
 import { SimpleTag } from '@/components/ui/tag'
 import {
   ACCOUNT_HUB_LIST_CARD_CLASS,
@@ -50,7 +50,7 @@ export function IssuesTab({
       {issuesLoading && issues.length === 0 ? (
         <div className="grid gap-3 xl:grid-cols-2">
           {Array.from({ length: 8 }, (_, index) => (
-            <Skeleton key={index} className="h-24" />
+            <Skeleton key={index} style={skeletonStagger(index)} className="h-24" />
           ))}
         </div>
       ) : issues.length === 0 ? (

@@ -1,5 +1,9 @@
+'use client'
+
+import { useState } from 'react'
 import { ScrollShadow } from '@/components/ui/scroll-shadow'
-import { Skeleton } from '@/components/ui/skeleton'
+import { Skeleton, skeletonStagger } from '@/components/ui/skeleton'
+import { useSkeletonRowCount } from '@/hooks/use-skeleton-row-count'
 import { cn } from '@/utils/cn'
 import { TableHeadRow } from './repository-table-header'
 
@@ -21,7 +25,7 @@ export function RepoRowSkeleton({ index = 0 }: { index?: number }) {
   const starsWidth = SKELETON_COUNT_WIDTHS[(index + 2) % SKELETON_COUNT_WIDTHS.length]
 
   return (
-    <tr>
+    <tr style={skeletonStagger(index)}>
       <td
         className={cn(
           'sticky left-0 z-10 overflow-hidden border-b border-b-row-divider border-r border-r-row-divider bg-background px-3 py-3 sm:px-4',
@@ -80,7 +84,10 @@ export function RepoRowSkeleton({ index = 0 }: { index?: number }) {
   )
 }
 
-export function RepoTableSkeleton({ rows = 10, className }: { rows?: number; className?: string }) {
+export function RepoTableSkeleton({ className }: { className?: string }) {
+  const [viewport, setViewport] = useState<HTMLDivElement | null>(null)
+  const rows = useSkeletonRowCount({ node: viewport })
+
   return (
     <div
       className={cn(
@@ -92,7 +99,7 @@ export function RepoTableSkeleton({ rows = 10, className }: { rows?: number; cla
         <Skeleton className="h-9 w-9 rounded-lg" />
         <Skeleton className="h-9 w-full max-w-md rounded-lg" />
       </div>
-      <ScrollShadow wrapperClassName="min-h-0 flex-1" className="w-full">
+      <ScrollShadow wrapperClassName="min-h-0 flex-1" className="w-full" viewportRef={setViewport}>
         <table
           aria-hidden="true"
           className="w-max min-w-full table-auto border-separate border-spacing-0"

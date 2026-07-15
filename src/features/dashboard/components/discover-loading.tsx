@@ -1,4 +1,4 @@
-import { Skeleton } from '@/components/ui/skeleton'
+import { Skeleton, skeletonStagger } from '@/components/ui/skeleton'
 import { PageHeaderSkeleton } from '@/features/dashboard/components/page-header'
 import { RepoTableSkeleton } from '@/features/repositories/components/repo-table'
 
@@ -15,7 +15,7 @@ export default function DiscoverLoading() {
 
       <div className="grid shrink-0 grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-7">
         {Array.from({ length: 7 }).map((_, i) => (
-          <Skeleton key={i} className="h-9 w-full rounded-md" />
+          <Skeleton key={i} style={skeletonStagger(i)} className="h-9 w-full rounded-md" />
         ))}
       </div>
 

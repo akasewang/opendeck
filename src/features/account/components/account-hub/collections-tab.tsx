@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input'
 import { TextArea } from '@/components/ui/text-area'
 import { DataPanel as Panel, DataPanelEmpty as PanelEmpty } from '@/components/ui/data-panel'
 import { EmptyState } from '@/components/ui/empty-state'
-import { Skeleton } from '@/components/ui/skeleton'
+import { Skeleton, skeletonStagger } from '@/components/ui/skeleton'
 import { StatusPill } from '@/components/ui/status-pill'
 import { SimpleTag } from '@/components/ui/tag'
 import { toast } from '@/components/ui/toast'
@@ -175,7 +175,7 @@ function CollectionDetailView({
       {collectionDetailLoading && !collectionDetail ? (
         <div className="space-y-2">
           {Array.from({ length: 3 }, (_, index) => (
-            <Skeleton key={index} className="h-16" />
+            <Skeleton key={index} style={skeletonStagger(index)} className="h-16" />
           ))}
         </div>
       ) : (collectionDetail?.items ?? []).length === 0 ? (
