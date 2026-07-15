@@ -108,10 +108,9 @@ Ingestion runs on GitHub Actions rather than platform crons, because the free ho
 
 | Workflow | Schedule | Work |
 | :-- | :-- | :-- |
-| `ingest-trending.yml` | hourly, `0 * * * *` | Refreshes recently active repositories. |
-| `ingest-daily.yml` | daily, `0 2 * * *` UTC | Full discovery sweep, then refreshes the 50 stalest repositories. |
+| `ingest-daily.yml` | daily, `0 2 * * *` UTC | Runs discovery, refreshes the 50 stalest repositories and ingests trending repositories. |
 
-Both workflows also accept a manual `workflow_dispatch`. `/api/cron/ingest` remains available as an authenticated HTTP trigger.
+The workflow also accepts a manual `workflow_dispatch`. `/api/cron/ingest` remains available as an authenticated HTTP trigger.
 
 ### Source map
 
