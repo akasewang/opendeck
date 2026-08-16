@@ -20,9 +20,12 @@ import {
   RepoTableSkeleton,
 } from '@/features/repositories/components/table/repository-table-skeleton'
 import { TableToolbar } from '@/features/repositories/components/table/repository-table-toolbar'
+import {
+  COLUMN_BOUNDS,
+  NAME_COLUMN_BOUNDS,
+} from '@/features/repositories/components/table/table-layout'
 import { REPOSITORY_TABLE_COLUMNS } from '@/features/repositories/data/repository-table-columns'
 import type { RepositoryListItem } from '@/features/repositories/types/repository'
-import type { RepositoryTableColumnKey } from '@/features/repositories/types/repository-table'
 import { repoKey } from '@/features/repositories/utils/repository-table-url-state'
 import { useSkeletonRowCount } from '@/hooks/use-skeleton-row-count'
 import { clearUrlParameter } from '@/lib/browser/url-state'
@@ -31,15 +34,6 @@ import { cn } from '@/utils/cn'
 export { RepoTableSkeleton }
 
 const LOADING_MORE_SKELETON_COUNT = 5
-const NAME_COLUMN_BOUNDS =
-  'w-auto min-w-[11rem] max-w-[22rem] sm:min-w-[18rem] sm:max-w-[28rem] md:min-w-[20rem] md:max-w-[34rem] lg:min-w-[24rem] lg:max-w-[42rem] xl:max-w-[50rem] 2xl:max-w-[58rem]'
-const COLUMN_BOUNDS: Partial<Record<RepositoryTableColumnKey, string>> = {
-  language: 'min-w-[8rem]',
-  topics: 'min-w-[16rem]',
-  open_issues_count: 'min-w-[7.5rem]',
-  stargazers_count: 'min-w-[7rem]',
-  contribution_score: 'min-w-[10.75rem]',
-}
 
 export default function RepoTable({
   data,

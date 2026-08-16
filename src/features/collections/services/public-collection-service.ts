@@ -1,20 +1,8 @@
 import { and, desc, eq, isNotNull } from 'drizzle-orm'
 import { db } from '@/db/client'
 import { repos, userCollectionItems, userCollections } from '@/db/schema'
+import { mapCollectionSummary } from '@/features/collections/utils/collection-summary'
 import { toGithubRepository } from '@/features/repositories/services/repository-query-service'
-
-function mapCollection(row: typeof userCollections.$inferSelect, itemCount = 0) {
-  return {
-    id: row.id,
-    name: row.name,
-    description: row.description,
-    visibility: row.visibility,
-    itemCount,
-    shareSlug: row.shareSlug,
-    templateKey: row.templateKey,
-    publishedAt: row.publishedAt?.toISOString() ?? null,
-  }
-}
 
 export async function getPublicCollection(slug: string) {
   const [collection] = await db
@@ -38,7 +26,7 @@ export async function getPublicCollection(slug: string) {
     .orderBy(desc(userCollectionItems.addedAt))
 
   return {
-    collection: mapCollection(collection, items.length),
+    collection: mapCollectionSummary(collection, items.length),
     items: items.map((item) => toGithubRepository(item.repo)),
   }
 }

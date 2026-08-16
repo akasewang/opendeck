@@ -1,22 +1,23 @@
 import { and, asc, desc, eq, sql } from 'drizzle-orm'
 import { db } from '@/db/client'
 import { curatedProjects, repoMetricSnapshots, repos } from '@/db/schema'
+import { REPOSITORY_FULL_NAME_PATTERN } from '@/features/repositories/constants/repository-validation'
 import {
   getContributionReadiness,
   shouldIngestContributionCandidate,
 } from '@/features/repositories/services/contribution-readiness'
 import { continueIncompleteRepositoryIssueSyncs } from '@/features/repositories/services/repository-issue-service'
 import { safeErrorContext } from '@/lib/api/errors'
+import { isRecord } from '@/lib/api/input-normalization'
 import { githubFetchJson, githubGraphql } from '@/lib/github/client'
 import { getGithubTokenSnapshot } from '@/lib/github/tokens'
-import { isRecord } from '@/lib/api/input-normalization'
-import { REPOSITORY_FULL_NAME_PATTERN } from '@/features/repositories/constants/repository-validation'
+import { DAY_MS, toDate } from '@/utils/time'
 import { finishIngestRun, startIngestRun } from './ingestion-run-service'
 import { getDiscoverySources } from './ingestion-sources'
 
 export const DEFAULT_DISCOVERY_LIMIT_PER_SOURCE = 100
 const MAX_DISCOVERY_LIMIT_PER_SOURCE = 100
-const DEFAULT_REPOSITORY_CORPUS_TARGET = 1300
+const DEFAULT_REPOSITORY_CORPUS_TARGET = 500
 
 type NormalizedGithubRepo = {
   ghId: number
@@ -144,12 +145,6 @@ const REPOSITORY_SEARCH = `
   }
 `
 
-function toDate(value?: string | null) {
-  if (!value) return null
-  const date = new Date(value)
-  return Number.isNaN(date.getTime()) ? null : date
-}
-
 function excerpt(value?: string | null) {
   if (!value) return null
   return value.replace(/\s+/g, ' ').trim().slice(0, 4000)
@@ -256,9 +251,7 @@ function safeCount(value: unknown) {
   return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : 0
 }
 
-function optionalCount(value: unknown) {
-  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : null
-}
+import { toNonNegativeInteger } from '@/lib/api/type-guards'
 
 function nestedCount(value: unknown) {
   return isRecord(value) ? safeCount(value.totalCount) : 0
@@ -449,7 +442,10 @@ async function getRepoMirrorStateByGhId(ghId: number) {
   }
 }
 
-type RepositorySnapshotMetrics = Pick<NormalizedGithubRepo, 'ghId' | 'stars' | 'forks' | 'openIssues'>
+type RepositorySnapshotMetrics = Pick<
+  NormalizedGithubRepo,
+  'ghId' | 'stars' | 'forks' | 'openIssues'
+>
 
 export function buildRepositorySnapshotWrite(database: typeof db, repo: RepositorySnapshotMetrics) {
   return database.insert(repoMetricSnapshots).select(
@@ -583,7 +579,7 @@ async function searchRepositories(query: string, limit: number) {
 
     const payload = isRecord(result.data) ? result.data : null
     const rateLimit = isRecord(payload?.rateLimit)
-      ? optionalCount(payload.rateLimit.remaining)
+      ? toNonNegativeInteger(payload.rateLimit.remaining)
       : null
     rateLimitRemaining = rateLimit ?? result.rateLimitRemaining ?? rateLimitRemaining
 
@@ -604,7 +600,7 @@ async function searchRepositories(query: string, limit: number) {
 
 export async function ingestTrending(limit = 50) {
   const runId = await startIngestRun('trending')
-  const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+  const since = new Date(Date.now() - 30 * DAY_MS).toISOString().split('T')[0]
   let ingested = 0
   let updated = 0
   let inserted = 0

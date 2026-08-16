@@ -17,13 +17,13 @@ import Select from '@/components/ui/select'
 import { Skeleton, SkeletonPanel } from '@/components/ui/skeleton'
 import { StatusPill } from '@/components/ui/status-pill'
 import { toast } from '@/components/ui/toast'
-import { API_ROUTES } from '@/config/routes'
 import {
   MOTION_DURATION_SECONDS,
   MOTION_EASING,
   MOTION_SPRING,
   MOTION_STAGGER_STEP_SECONDS,
 } from '@/config/motion'
+import { API_ROUTES } from '@/config/routes'
 import { getAdminApi, postAdminApi } from '@/features/admin/api/admin-api-client'
 import type {
   AdminAllowlistRule,

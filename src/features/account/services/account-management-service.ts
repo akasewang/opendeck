@@ -13,13 +13,26 @@ import {
   userRecentViews,
   userRepoStates,
 } from '@/db/schema'
-import {
-  ACCOUNT_DIGEST_FREQUENCIES,
-  ACCOUNT_PIPELINE_STAGE_IDS,
-  type AccountDigestFrequency,
-  type AccountPipelineStage,
-} from '@/features/account/constants/account-options'
+import { ACCOUNT_DIGEST_FREQUENCIES } from '@/features/account/constants/account-options'
 import { ensureAccountDefaults } from '@/features/account/services/account-defaults-service'
+import {
+  mapAlert,
+  mapCollection,
+  mapFollow,
+  mapRepoState,
+  mapSession,
+} from '@/features/account/services/account-mappers'
+import {
+  normalizeBoolean,
+  normalizeDigestDay,
+  normalizeDigestFrequency,
+  normalizePipelineStage,
+  normalizeSort,
+  normalizeTargetKey,
+  normalizeTargetType,
+  SORTS,
+  validateTargetKey,
+} from '@/features/account/services/account-normalizers'
 import { getAccountFeatureSummary } from '@/features/account/services/account-workspace-service'
 import { deleteUserPreservingActiveAdmin } from '@/features/auth/services/admin-role-service'
 import {
@@ -31,158 +44,29 @@ import {
   toPublicUser,
 } from '@/features/auth/services/authentication-service'
 import type { AuthUser } from '@/features/auth/types/authentication'
+import { REPOSITORY_FULL_NAME_PATTERN } from '@/features/repositories/constants/repository-validation'
+import {
+  getSetupDifficulty,
+  looksLikeResourceCollection,
+} from '@/features/repositories/services/contribution-readiness'
 import {
   type RepoWithCurated,
   searchRepos,
   toGithubRepository,
 } from '@/features/repositories/services/repository-query-service'
 import {
-  getSetupDifficulty,
-  looksLikeResourceCollection,
-} from '@/features/repositories/services/contribution-readiness'
-import type { RepoSearchParams } from '@/features/repositories/types/repository-query'
-import {
   cleanOptionalText,
   cleanStringList,
   cleanText,
   cleanUuid,
   isRecord,
-  normalizeNumber,
   parseIntegerValue,
 } from '@/lib/api/input-normalization'
-import {
-  GITHUB_OWNER_PATTERN,
-  REPOSITORY_FULL_NAME_PATTERN,
-} from '@/features/repositories/constants/repository-validation'
-
-type RepoSort = NonNullable<RepoSearchParams['sort']>
-
-const SORTS: readonly RepoSort[] = [
-  'relevance',
-  'stars',
-  'forks',
-  'recent',
-  'updated',
-  'contribution',
-]
+import { DAY_MS } from '@/utils/time'
 
 type RepoInput = {
   repoId?: unknown
   fullName?: unknown
-}
-
-function normalizePipelineStage(value: unknown): AccountPipelineStage {
-  const stage = ACCOUNT_PIPELINE_STAGE_IDS.find((candidate) => candidate === value)
-  if (!stage) throw new Error('Invalid pipeline stage.')
-  return stage
-}
-
-function normalizeDigestFrequency(value: unknown): AccountDigestFrequency {
-  return ACCOUNT_DIGEST_FREQUENCIES.find((frequency) => frequency === value) ?? 'weekly'
-}
-
-function normalizeSort(value: unknown): RepoSort {
-  return SORTS.find((sort) => sort === value) ?? 'contribution'
-}
-
-function normalizeBoolean(value: unknown, fallback: boolean) {
-  return typeof value === 'boolean' ? value : fallback
-}
-
-function normalizeDigestDay(value: unknown) {
-  const day = normalizeNumber(value, 1, 6)
-  return Math.min(Math.max(day, 0), 6)
-}
-
-function normalizeTargetType(value: unknown) {
-  if (value === undefined || value === null || value === '' || value === 'repo') return 'repo'
-  if (value === 'organization') return 'organization'
-  throw new Error('Invalid follow target type.')
-}
-
-function normalizeTargetKey(value: unknown) {
-  return cleanText(value, 180)
-}
-
-function validateTargetKey(targetType: 'repo' | 'organization', targetKey: string) {
-  const valid =
-    targetType === 'repo'
-      ? REPOSITORY_FULL_NAME_PATTERN.test(targetKey)
-      : GITHUB_OWNER_PATTERN.test(targetKey)
-  if (!valid) throw new Error(`Invalid ${targetType} follow target.`)
-}
-
-function mapSession(row: typeof authSessions.$inferSelect, currentTokenHash?: string) {
-  return {
-    id: row.id,
-    userAgent: row.userAgent,
-    ipAddress: row.ipAddress,
-    createdAt: row.createdAt.toISOString(),
-    lastSeenAt: row.lastSeenAt.toISOString(),
-    expiresAt: row.expiresAt.toISOString(),
-    revokedAt: row.revokedAt?.toISOString() ?? null,
-    current: currentTokenHash ? row.tokenHash === currentTokenHash : false,
-  }
-}
-
-function mapRepoState(state?: typeof userRepoStates.$inferSelect | null) {
-  return state
-    ? {
-        savedAt: state.savedAt?.toISOString() ?? null,
-        hiddenAt: state.hiddenAt?.toISOString() ?? null,
-        dismissedAt: state.dismissedAt?.toISOString() ?? null,
-        reviewedAt: state.reviewedAt?.toISOString() ?? null,
-        pipelineStage: state.pipelineStage,
-        note: state.note,
-        alertEnabled: state.alertEnabled,
-        updatedAt: state.updatedAt.toISOString(),
-      }
-    : {
-        savedAt: null,
-        hiddenAt: null,
-        dismissedAt: null,
-        reviewedAt: null,
-        pipelineStage: 'interested',
-        note: null,
-        alertEnabled: true,
-        updatedAt: null,
-      }
-}
-
-function mapCollection(row: typeof userCollections.$inferSelect, itemCount = 0) {
-  return {
-    id: row.id,
-    name: row.name,
-    description: row.description,
-    visibility: row.visibility,
-    shareSlug: row.shareSlug,
-    templateKey: row.templateKey,
-    publishedAt: row.publishedAt?.toISOString() ?? null,
-    itemCount,
-    createdAt: row.createdAt.toISOString(),
-    updatedAt: row.updatedAt.toISOString(),
-  }
-}
-
-function mapFollow(row: typeof userFollows.$inferSelect) {
-  return {
-    id: row.id,
-    targetType: row.targetType,
-    targetKey: row.targetKey,
-    alertEnabled: row.alertEnabled,
-    createdAt: row.createdAt.toISOString(),
-  }
-}
-
-function mapAlert(row: typeof userAlerts.$inferSelect) {
-  return {
-    id: row.id,
-    type: row.type,
-    message: row.message,
-    readAt: row.readAt?.toISOString() ?? null,
-    createdAt: row.createdAt.toISOString(),
-    metadata: row.metadata,
-  }
 }
 
 async function getPreferences(userId: string) {
@@ -223,7 +107,7 @@ function filterRecommendations(
     if (prefs.excludeResourceLists && looksLikeResourceCollection(repo)) return false
     if (
       prefs.excludeLowActivity &&
-      (!repo.pushedAt || Date.now() - repo.pushedAt.getTime() > 90 * 24 * 60 * 60 * 1000)
+      (!repo.pushedAt || Date.now() - repo.pushedAt.getTime() > 90 * DAY_MS)
     ) {
       return false
     }

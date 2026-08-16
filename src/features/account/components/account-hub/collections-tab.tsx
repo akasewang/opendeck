@@ -5,15 +5,16 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { useState } from 'react'
 import { Button, buttonVariants } from '@/components/ui/button'
 import CountPill from '@/components/ui/count-pill'
-import { Input } from '@/components/ui/input'
-import { TextArea } from '@/components/ui/text-area'
 import { DataPanel as Panel, DataPanelEmpty as PanelEmpty } from '@/components/ui/data-panel'
 import { EmptyState } from '@/components/ui/empty-state'
+import { Input } from '@/components/ui/input'
 import { Skeleton, skeletonStagger } from '@/components/ui/skeleton'
 import { StatusPill } from '@/components/ui/status-pill'
 import { SimpleTag } from '@/components/ui/tag'
+import { TextArea } from '@/components/ui/text-area'
 import { toast } from '@/components/ui/toast'
 import { API_ROUTES, appRoute } from '@/config/routes'
+import { postAccountApi } from '@/features/account/api/account-api-client'
 import {
   ACCOUNT_HUB_LIST_CARD_CLASS,
   ACCOUNT_HUB_LIST_ITEM_EXIT,
@@ -22,7 +23,6 @@ import {
   ACCOUNT_HUB_SECTION_STAGGER,
   ConfirmButton,
 } from '@/features/account/components/account-hub/account-hub-elements'
-import { postAccountApi } from '@/features/account/api/account-api-client'
 import type {
   AccountHubCollectionDetail,
   AccountOverview,
@@ -30,8 +30,8 @@ import type {
 import { recommendationKey, repositoryName } from '@/features/account/utils/account-formatters'
 import { RepoSearchInput } from '@/features/repositories/components/repo-search-input'
 import type { RepositoryApiItem } from '@/features/repositories/types/repository'
-import { formatNumber } from '@/utils/format-number'
 import { cn } from '@/utils/cn'
+import { formatNumber } from '@/utils/format-number'
 
 export function CollectionsTab({
   overview,

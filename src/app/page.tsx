@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { unstable_cache } from 'next/cache'
 import { APP_CONFIG } from '@/config/application'
 import Hero from '@/features/landing/components/hero'
 import type { ScatterItem } from '@/features/landing/components/repo-scatter'
@@ -22,25 +23,40 @@ export const metadata: Metadata = createPageMetadata({
 const MAX_ICONS = 105
 const MAX_ICON_SOURCE_ORGS = MAX_ICONS * 4
 
-async function getScatterIcons(): Promise<ScatterItem[]> {
-  try {
-    const orgs = await listOrganizations(MAX_ICON_SOURCE_ORGS)
+const getCachedScatterIcons = unstable_cache(
+  async () => {
+    try {
+      const orgs = await listOrganizations(MAX_ICON_SOURCE_ORGS)
 
-    const validOrgs = orgs.filter((org): org is typeof org & { owner: string; avatarUrl: string } =>
-      Boolean(org.owner && org.avatarUrl),
-    )
+      const selectedOrgs = orgs
+        .filter((org): org is typeof org & { owner: string; avatarUrl: string } =>
+          Boolean(org.owner && org.avatarUrl),
+        )
+        .slice(0, MAX_ICONS)
 
-    for (let i = validOrgs.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1))
-      ;[validOrgs[i], validOrgs[j]] = [validOrgs[j], validOrgs[i]]
+      return selectedOrgs.map((org) => ({
+        id: org.owner,
+        name: org.owner,
+        imgUrl: org.avatarUrl,
+      }))
+    } catch {
+      return []
     }
+  },
+  ['landing-scatter-icons'],
+  { revalidate: 3600 }
+)
 
-    return validOrgs
-      .slice(0, MAX_ICONS)
-      .map((org) => ({ id: org.owner, name: org.owner, imgUrl: org.avatarUrl }))
-  } catch {
-    return []
+async function getScatterIcons(): Promise<ScatterItem[]> {
+  const icons = await getCachedScatterIcons()
+  
+  const shuffled = [...icons]
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
   }
+
+  return shuffled
 }
 
 export default async function LandingPage() {

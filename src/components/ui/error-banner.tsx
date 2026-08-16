@@ -2,8 +2,8 @@
 
 import { Icon } from '@iconify/react'
 import { motion } from 'framer-motion'
-import { MOTION_SPRING } from '@/config/motion'
 import { Button } from '@/components/ui/button'
+import { MOTION_SPRING } from '@/config/motion'
 
 export function ErrorBanner({
   message,

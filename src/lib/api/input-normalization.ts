@@ -86,3 +86,12 @@ export function parseNullableDate(value?: string | null) {
   const date = new Date(value)
   return Number.isNaN(date.getTime()) ? null : date
 }
+
+export function parseRequestIp(headers: Headers | null | undefined, max = 64) {
+  const raw =
+    headers?.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+    headers?.get('x-real-ip')?.trim() ||
+    ''
+  const cleaned = raw.replace(/[\u0000-\u001f\u007f]/g, '').slice(0, max)
+  return cleaned || null
+}

@@ -1,230 +1,66 @@
 'use client'
 
 import { Icon } from '@iconify/react'
-import { AnimatePresence, motion, type Variants, useReducedMotion } from 'framer-motion'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import Image from 'next/image'
 import Link from 'next/link'
-import {
-  Fragment,
-  type ReactNode,
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react'
+import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { cardVariants } from '@/components/ui/card'
 import { EmptyState } from '@/components/ui/empty-state'
 import { ErrorBanner } from '@/components/ui/error-banner'
-import { RefreshButton } from '@/components/ui/refresh-button'
 import { ScrollShadow } from '@/components/ui/scroll-shadow'
-import { SearchBar } from '@/components/ui/search-bar'
 import Select from '@/components/ui/select'
 import { Skeleton, skeletonStagger } from '@/components/ui/skeleton'
 import { ColorfulTag, SimpleTag } from '@/components/ui/tag'
 import { toast } from '@/components/ui/toast'
+import { MOTION_DURATION_SECONDS, MOTION_EASING } from '@/config/motion'
 import { API_ROUTES, appRoute, withQuery } from '@/config/routes'
-import { MOTION_DURATION_SECONDS, MOTION_EASING, MOTION_SPRING } from '@/config/motion'
 import { useAuth } from '@/features/auth/providers/auth-provider'
 import PageHeader from '@/features/dashboard/components/page-header'
 import PageShell from '@/features/dashboard/components/page-shell'
-import { useOrganizationProfile } from '@/features/organizations/hooks/use-organization-profile'
 import {
   organizationFollowCache,
   prefetchOrganizationFollowStates,
 } from '@/features/organizations/api/organization-follow-cache'
+import {
+  DetailField,
+  DetailMetric,
+  DetailSection,
+} from '@/features/organizations/components/organizations-detail-fields'
+import {
+  OrganizationSkeleton,
+  OrganizationToolbar,
+} from '@/features/organizations/components/organizations-page-chrome'
+import {
+  detailsIdFor,
+  GRID_STAGGER,
+  GROUP_STAGGER,
+  HEADER_CELL_CLASS,
+  OWNER_COLUMN_CLASS,
+  OWNER_HEADER_CLASS,
+  organizationKey,
+  ROW_ITEM,
+  SECTION_ITEM,
+  SECTION_STAGGER,
+  SKELETON_FIELD_WIDTHS,
+  TABLE_CELL_CLASS,
+  TABLE_HEADERS,
+  TABLE_SURFACE_CLASS,
+  TOP_REPOSITORY_COLUMN_CLASS,
+} from '@/features/organizations/components/organizations-page-presets'
+import { useOrganizationProfile } from '@/features/organizations/hooks/use-organization-profile'
 import type { Organization } from '@/features/organizations/types/organization'
 import { isOrganization } from '@/features/organizations/utils/organization-response-validation'
 import { formatDate, getLanguageTagStyle } from '@/features/repositories/utils/repository-display'
 import { useSkeletonRowCount } from '@/hooks/use-skeleton-row-count'
-import { isRecord } from '@/lib/api/input-normalization'
 import { apiErrorMessage } from '@/lib/api/errors'
+import { isRecord } from '@/lib/api/input-normalization'
+import { clearUrlParameter } from '@/lib/browser/url-state'
+import { githubAvatarUrl } from '@/lib/github/avatar'
 import { cn } from '@/utils/cn'
 import { formatNumber } from '@/utils/format-number'
-import { clearUrlParameter } from '@/lib/browser/url-state'
 
 const MotionLink = motion.create(Link)
-
-const TABLE_HEADERS = ['Organization', 'Language', 'Repos', 'Stars', 'Top repository'] as const
-
-const TABLE_SURFACE_CLASS = cardVariants({
-  className: 'flex min-h-0 flex-col overflow-hidden backdrop-blur-sm',
-})
-
-const HEADER_CELL_CLASS =
-  'sticky top-0 z-20 whitespace-nowrap border-b border-b-row-divider bg-sidebar px-3 py-2 text-left text-2xs font-semibold uppercase tracking-normal text-muted-foreground/70 transition-shadow group-data-[scrolled]/scroll:shadow-table-header sm:px-4'
-
-const TABLE_CELL_CLASS = 'border-b border-b-row-divider px-3 py-3 text-sm sm:px-4'
-
-const OWNER_COLUMN_CLASS =
-  'sticky left-0 z-10 min-w-[14rem] border-r border-r-row-divider bg-background sm:min-w-[16rem] md:min-w-[18rem]'
-
-const OWNER_HEADER_CLASS =
-  'left-0 z-30 min-w-[14rem] border-r border-r-row-divider bg-sidebar sm:min-w-[16rem] md:min-w-[18rem]'
-
-const TOP_REPOSITORY_COLUMN_CLASS = 'min-w-[16rem] max-w-[26rem] md:min-w-[20rem] md:max-w-[34rem]'
-
-const SKELETON_OWNER_WIDTHS = ['w-32', 'w-24', 'w-40', 'w-28', 'w-44', 'w-36', 'w-24', 'w-40']
-const SKELETON_LANGUAGE_WIDTHS = ['w-20', 'w-14', 'w-16', 'w-24']
-const SKELETON_COUNT_WIDTHS = ['w-10', 'w-14', 'w-8', 'w-12']
-const SKELETON_REPO_WIDTHS = ['w-44', 'w-64', 'w-36', 'w-56', 'w-48']
-const SKELETON_FIELD_WIDTHS = [
-  'max-w-48',
-  'max-w-36',
-  'max-w-56',
-  'max-w-40',
-  'max-w-52',
-  'max-w-32',
-]
-
-const GRID_STAGGER: Variants = {
-  hidden: {},
-  show: { transition: { staggerChildren: 0.04 } },
-}
-
-const ROW_ITEM: Variants = {
-  hidden: { opacity: 0, y: 6 },
-  show: { opacity: 1, y: 0, transition: MOTION_SPRING.soft },
-}
-
-const SECTION_STAGGER: Variants = {
-  hidden: {},
-  show: { transition: { staggerChildren: 0.07, delayChildren: 0.05 } },
-}
-
-const SECTION_ITEM: Variants = {
-  hidden: { opacity: 0, y: 10 },
-  show: { opacity: 1, y: 0, transition: MOTION_SPRING.standard },
-}
-
-const GROUP_STAGGER: Variants = {
-  hidden: { opacity: 0, y: 8 },
-  show: {
-    opacity: 1,
-    y: 0,
-    transition: { ...MOTION_SPRING.standard, staggerChildren: 0.04 },
-  },
-}
-
-const CHIP_ITEM: Variants = {
-  hidden: { opacity: 0, scale: 0.9, y: 4 },
-  show: { opacity: 1, scale: 1, y: 0, transition: MOTION_SPRING.firmSoft },
-}
-
-const organizationKey = (organization: Organization) => organization.owner
-
-const detailsIdFor = (organization: Organization) =>
-  `organization-details-${organization.owner.replace(/[^a-zA-Z0-9_-]/g, '-')}`
-
-function DetailMetric({
-  icon,
-  leading,
-  value,
-  label,
-}: {
-  icon?: string
-  leading?: ReactNode
-  value: string
-  label?: string
-}) {
-  return (
-    <motion.span
-      variants={CHIP_ITEM}
-      className="inline-flex items-center gap-1.5 text-sm text-muted-foreground"
-    >
-      {leading ?? (icon ? <Icon icon={icon} className="h-4 w-4 text-muted-foreground/70" /> : null)}
-      <span className="font-medium text-foreground">{value}</span>
-      {label}
-    </motion.span>
-  )
-}
-
-function DetailField({
-  icon,
-  label,
-  value,
-  href,
-}: {
-  icon: string
-  label: string
-  value?: ReactNode
-  href?: string
-}) {
-  if (!value) return null
-
-  const isExternal = href ? /^https?:\/\//.test(href) : false
-  const copyText = !href && typeof value === 'string' ? value : null
-
-  return (
-    <motion.span
-      variants={CHIP_ITEM}
-      className="flex min-w-0 items-center gap-2 text-sm text-muted-foreground"
-    >
-      <Icon icon={icon} className="h-4 w-4 shrink-0 text-muted-foreground/70" />
-      <span className="shrink-0 text-xs font-medium text-muted-foreground/80">{label}</span>
-      {href ? (
-        <Link
-          href={href}
-          target={isExternal ? '_blank' : undefined}
-          rel={isExternal ? 'noopener noreferrer' : undefined}
-          onClick={(event) => event.stopPropagation()}
-          className="inline-flex min-w-0 items-center gap-1 font-medium text-foreground transition-colors hover:text-primary"
-        >
-          <span className="min-w-0 truncate">{value}</span>
-          <Icon
-            icon="ri:external-link-line"
-            className="h-3 w-3 shrink-0 text-muted-foreground/60"
-          />
-        </Link>
-      ) : copyText !== null ? (
-        <button
-          type="button"
-          onClick={(event) => {
-            event.stopPropagation()
-            if (!copyText || !navigator.clipboard) {
-              toast(`${label} could not be copied in this browser.`, { tone: 'error' })
-              return
-            }
-            navigator.clipboard.writeText(copyText).then(
-              () => toast(`${label} copied`),
-              () => toast(`Unable to copy ${label.toLowerCase()}.`, { tone: 'error' }),
-            )
-          }}
-          className="group inline-flex min-w-0 items-center gap-1 text-left font-medium text-foreground transition-colors hover:text-primary focus:outline-none focus:ring-1 focus:ring-ring"
-        >
-          <span className="min-w-0 truncate">{value}</span>
-          <Icon
-            icon="ri:file-copy-line"
-            className="h-3 w-3 shrink-0 text-muted-foreground/50 opacity-0 transition-opacity group-hover:opacity-100"
-          />
-        </button>
-      ) : (
-        <span className="min-w-0 truncate font-medium text-foreground">{value}</span>
-      )}
-    </motion.span>
-  )
-}
-
-function DetailSection({
-  title,
-  children,
-  className,
-}: {
-  title: string
-  children: ReactNode
-  className?: string
-}) {
-  return (
-    <motion.section
-      variants={SECTION_ITEM}
-      className={cn('@container min-w-0 space-y-2.5', className)}
-    >
-      <h2 className="text-balance text-xs font-semibold text-muted-foreground">{title}</h2>
-      {children}
-    </motion.section>
-  )
-}
 
 function OrganizationPersonalPanel({ organization }: { organization: Organization }) {
   const { user } = useAuth()
@@ -375,69 +211,6 @@ function OrganizationPersonalPanel({ organization }: { organization: Organizatio
         </button>
       </div>
     </motion.div>
-  )
-}
-
-function OrganizationToolbar({
-  query,
-  onQueryChange,
-  onRefresh,
-  isRefreshing,
-}: {
-  query: string
-  onQueryChange: (value: string) => void
-  onRefresh: () => void
-  isRefreshing?: boolean
-}) {
-  return (
-    <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border/50 px-3 py-2.5">
-      <RefreshButton
-        onClick={onRefresh}
-        isRefreshing={isRefreshing}
-        ariaLabel="Refresh organizations"
-      />
-
-      <div className="relative w-full max-w-md">
-        <SearchBar
-          value={query}
-          onSearchChange={onQueryChange}
-          placeholder="Search organizations"
-          aria-label="Search organizations"
-          inputClassName="border-border/50 bg-background/40"
-        />
-      </div>
-    </div>
-  )
-}
-
-function OrganizationSkeleton({ index = 0 }: { index?: number }) {
-  const ownerWidth = SKELETON_OWNER_WIDTHS[index % SKELETON_OWNER_WIDTHS.length]
-  const languageWidth = SKELETON_LANGUAGE_WIDTHS[index % SKELETON_LANGUAGE_WIDTHS.length]
-  const reposWidth = SKELETON_COUNT_WIDTHS[index % SKELETON_COUNT_WIDTHS.length]
-  const starsWidth = SKELETON_COUNT_WIDTHS[(index + 2) % SKELETON_COUNT_WIDTHS.length]
-  const repoWidth = SKELETON_REPO_WIDTHS[index % SKELETON_REPO_WIDTHS.length]
-
-  return (
-    <tr style={skeletonStagger(index)}>
-      <td className={`${TABLE_CELL_CLASS} ${OWNER_COLUMN_CLASS}`}>
-        <div className="flex items-center gap-2.5">
-          <Skeleton className="h-6 w-6 shrink-0" />
-          <Skeleton className={cn('h-3.5 max-w-full', ownerWidth)} />
-        </div>
-      </td>
-      <td className={TABLE_CELL_CLASS}>
-        <Skeleton className={cn('h-5', languageWidth)} />
-      </td>
-      <td className={TABLE_CELL_CLASS}>
-        <Skeleton className={cn('h-3.5', reposWidth)} />
-      </td>
-      <td className={TABLE_CELL_CLASS}>
-        <Skeleton className={cn('h-3.5', starsWidth)} />
-      </td>
-      <td className={cn(TABLE_CELL_CLASS, TOP_REPOSITORY_COLUMN_CLASS)}>
-        <Skeleton className={cn('h-3.5 max-w-full', repoWidth)} />
-      </td>
-    </tr>
   )
 }
 
@@ -785,10 +558,11 @@ function OrganizationRow({
           <span className="h-6 w-6 shrink-0 overflow-hidden rounded-md border border-border/70 bg-background">
             {organization.avatarUrl ? (
               <Image
-                src={organization.avatarUrl}
+                src={githubAvatarUrl(organization.avatarUrl)}
                 alt=""
                 width={24}
                 height={24}
+                unoptimized={true}
                 className="h-full w-full object-cover"
               />
             ) : (

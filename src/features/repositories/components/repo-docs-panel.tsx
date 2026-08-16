@@ -27,9 +27,9 @@ import {
   REPOSITORY_SECONDARY_DOCUMENT_TITLE,
   type RepositoryDocumentId,
 } from '@/features/repositories/constants/repository-documents'
+import { apiErrorMessage } from '@/lib/api/errors'
 import { fetchWithTimeout } from '@/lib/api/http-client'
 import { isRecord } from '@/lib/api/input-normalization'
-import { apiErrorMessage } from '@/lib/api/errors'
 import { cn } from '@/utils/cn'
 
 type ManifestDoc = {

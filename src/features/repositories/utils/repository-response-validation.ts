@@ -6,20 +6,10 @@ import type {
 } from '@/features/repositories/types/repository'
 import { isRecord } from '@/lib/api/input-normalization'
 
-function isOptionalString(value: unknown) {
-  return value === undefined || value === null || typeof value === 'string'
-}
-
-function isStringArray(value: unknown): value is string[] {
-  return Array.isArray(value) && value.every((item) => typeof item === 'string')
-}
-
-function isCount(value: unknown) {
-  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0
-}
+import { isNonNegativeInteger, isOptionalString, isStringArray } from '@/lib/api/type-guards'
 
 function isOptionalCount(value: unknown) {
-  return value === undefined || isCount(value)
+  return value === undefined || isNonNegativeInteger(value)
 }
 
 export function isRepositoryApiItem(value: unknown): value is RepositoryApiItem {
@@ -119,9 +109,9 @@ export function isRepositoryInsight(value: unknown): value is RepositoryInsight 
     value.timeline.every(
       (point) =>
         isRecord(point) &&
-        isCount(point.stars) &&
-        isCount(point.forks) &&
-        isCount(point.openIssues) &&
+        isNonNegativeInteger(point.stars) &&
+        isNonNegativeInteger(point.forks) &&
+        isNonNegativeInteger(point.openIssues) &&
         typeof point.capturedAt === 'string',
     ) &&
     value.issues.every(
@@ -134,7 +124,7 @@ export function isRepositoryInsight(value: unknown): value is RepositoryInsight 
         typeof issue.title === 'string' &&
         typeof issue.htmlUrl === 'string' &&
         isStringArray(issue.labels) &&
-        isCount(issue.comments) &&
+        isNonNegativeInteger(issue.comments) &&
         typeof issue.score === 'number' &&
         Number.isFinite(issue.score),
     )

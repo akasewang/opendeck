@@ -1,5 +1,15 @@
+import { DAY_MS, toDate } from '@/utils/time'
+
 export const CONTRIBUTION_ACTIVE_WITHIN_DAYS = 365
+export const CONTRIBUTION_RECENT_ACTIVITY_DAYS = 90
+export const CONTRIBUTION_FRESH_ACTIVITY_DAYS = 30
 export const CONTRIBUTION_READY_MIN_OPEN_ISSUES = 1
+export const CONTRIBUTION_STRONG_ISSUE_COUNT = 5
+export const CONTRIBUTION_ISSUE_BACKLOG_LIMIT = 2000
+export const CONTRIBUTION_POPULAR_STARS_MIN = 10
+export const CONTRIBUTION_POPULAR_STARS_MAX = 50_000
+export const CONTRIBUTION_SWEET_SPOT_STARS_MIN = 50
+export const CONTRIBUTION_SWEET_SPOT_STARS_MAX = 20_000
 
 export const STARTER_FRIENDLY_TOPICS = [
   'good-first-issue',
@@ -65,19 +75,11 @@ type ContributionReadiness = {
   blockers: string[]
 }
 
-function toDate(value?: Date | string | null) {
-  if (!value) return null
-  if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value
-
-  const parsed = new Date(value)
-  return Number.isNaN(parsed.getTime()) ? null : parsed
-}
-
 function daysSince(value?: Date | string | null, now = new Date()) {
   const date = toDate(value)
   if (!date) return null
 
-  return Math.floor((now.getTime() - date.getTime()) / (24 * 60 * 60 * 1000))
+  return Math.floor((now.getTime() - date.getTime()) / DAY_MS)
 }
 
 function hasStarterFriendlyTopic(candidate: ContributionCandidate) {
@@ -167,13 +169,23 @@ export function getContributionReadiness(
   if (candidate.defaultBranch) score += 5
 
   if (active) {
-    score += lastPushedDaysAgo !== null && lastPushedDaysAgo <= 90 ? 15 : 10
+    if (lastPushedDaysAgo !== null && lastPushedDaysAgo <= CONTRIBUTION_FRESH_ACTIVITY_DAYS) {
+      score += 18
+    } else if (
+      lastPushedDaysAgo !== null &&
+      lastPushedDaysAgo <= CONTRIBUTION_RECENT_ACTIVITY_DAYS
+    ) {
+      score += 15
+    } else {
+      score += 10
+    }
   } else {
     blockers.push('Inactive')
   }
 
   if (openIssues >= CONTRIBUTION_READY_MIN_OPEN_ISSUES) {
-    score += openIssues >= 5 ? 15 : 8
+    score += openIssues >= CONTRIBUTION_STRONG_ISSUE_COUNT ? 15 : 8
+    if (openIssues > CONTRIBUTION_ISSUE_BACKLOG_LIMIT) score -= 8
   } else {
     blockers.push('No open issues')
   }
@@ -192,8 +204,11 @@ export function getContributionReadiness(
     blockers.push('No project context')
   }
 
-  if (stars >= 10 && stars <= 50_000) score += 10
-  else if (stars > 0) score += 5
+  if (stars >= CONTRIBUTION_SWEET_SPOT_STARS_MIN && stars <= CONTRIBUTION_SWEET_SPOT_STARS_MAX)
+    score += 12
+  else if (stars >= CONTRIBUTION_POPULAR_STARS_MIN && stars <= CONTRIBUTION_POPULAR_STARS_MAX)
+    score += 8
+  else if (stars > 0) score += 4
 
   if (forks > 0) score += 5
 

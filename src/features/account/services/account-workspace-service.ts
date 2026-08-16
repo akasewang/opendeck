@@ -15,6 +15,8 @@ import {
 import { ACCOUNT_COLLECTION_TEMPLATES } from '@/features/account/constants/account-options'
 import { savedSearchFilters, savedSearchParams } from '@/features/account/utils/saved-search-params'
 import { createOpaqueToken } from '@/features/auth/services/authentication-service'
+import { mapCollectionSummary } from '@/features/collections/utils/collection-summary'
+import { REPOSITORY_FULL_NAME_PATTERN } from '@/features/repositories/constants/repository-validation'
 import {
   mapRepositoryIssue,
   syncRepositoryIssues,
@@ -32,20 +34,6 @@ import {
   normalizeSlugPart,
   parseIntegerValue,
 } from '@/lib/api/input-normalization'
-import { REPOSITORY_FULL_NAME_PATTERN } from '@/features/repositories/constants/repository-validation'
-
-function mapCollection(row: typeof userCollections.$inferSelect, itemCount = 0) {
-  return {
-    id: row.id,
-    name: row.name,
-    description: row.description,
-    visibility: row.visibility,
-    itemCount,
-    shareSlug: row.shareSlug,
-    templateKey: row.templateKey,
-    publishedAt: row.publishedAt?.toISOString() ?? null,
-  }
-}
 
 function mapOnboarding(row?: typeof userOnboardingProfiles.$inferSelect | null) {
   return row
@@ -305,7 +293,7 @@ export async function shareCollection(userId: string, body: Record<string, unkno
     .where(and(eq(userCollections.userId, userId), eq(userCollections.id, id)))
     .returning()
 
-  return mapCollection(updated)
+  return mapCollectionSummary(updated)
 }
 
 export async function createCollectionFromTemplate(userId: string, key: unknown) {
@@ -317,7 +305,7 @@ export async function createCollectionFromTemplate(userId: string, key: unknown)
     .from(userCollections)
     .where(and(eq(userCollections.userId, userId), eq(userCollections.templateKey, template.key)))
     .limit(1)
-  if (existing) return mapCollection(existing)
+  if (existing) return mapCollectionSummary(existing)
 
   const [created] = await db
     .insert(userCollections)
@@ -328,7 +316,7 @@ export async function createCollectionFromTemplate(userId: string, key: unknown)
       templateKey: template.key,
     })
     .returning()
-  return mapCollection(created)
+  return mapCollectionSummary(created)
 }
 
 export async function getCollectionDetail(userId: string, collectionId: unknown) {
@@ -349,7 +337,7 @@ export async function getCollectionDetail(userId: string, collectionId: unknown)
     .orderBy(desc(userCollectionItems.addedAt))
 
   return {
-    collection: mapCollection(collection, items.length),
+    collection: mapCollectionSummary(collection, items.length),
     items: items.map((item) => toGithubRepository(item.repo)),
   }
 }

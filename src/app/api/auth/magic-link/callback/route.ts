@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server'
-import { completeMagicLink } from '@/features/auth/services/magic-link-service'
 import { setSessionCookie } from '@/features/auth/services/authentication-service'
+import { completeMagicLink } from '@/features/auth/services/magic-link-service'
 import { callbackErrorCode } from '@/features/auth/utils/auth-error-messages'
 import { safeErrorContext } from '@/lib/api/errors'
 

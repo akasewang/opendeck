@@ -28,11 +28,11 @@ import {
 import RepoDocsPanel, {
   RepoAdditionalMarkdownPanel,
 } from '@/features/repositories/components/repo-docs-panel'
+import { useRepoContributors } from '@/features/repositories/hooks/use-repo-contributors'
 import {
   detailSectionStagger,
   sectionItem,
 } from '@/features/repositories/motion/repo-detail-motion'
-import { useRepoContributors } from '@/features/repositories/hooks/use-repo-contributors'
 import type {
   RepositoryInsight,
   RepositoryJournalPayload,
@@ -42,8 +42,9 @@ import {
   isRepositoryInsight,
   isRepositoryJournalPayload,
 } from '@/features/repositories/utils/repository-response-validation'
-import { fetchWithTimeout } from '@/lib/api/http-client'
 import { apiErrorMessage } from '@/lib/api/errors'
+import { fetchWithTimeout } from '@/lib/api/http-client'
+import { githubAvatarUrl } from '@/lib/github/avatar'
 import { cn } from '@/utils/cn'
 
 const FETCH_TIMEOUT_MS = 20_000
@@ -190,10 +191,11 @@ export default function RepoDetailWorkspace({ fullName }: { fullName: string }) 
             <div className="flex min-w-0 max-w-4xl items-start gap-3.5">
               {avatar && (
                 <Image
-                  src={`${avatar}${avatar.includes('?') ? '&' : '?'}s=88`}
+                  src={githubAvatarUrl(avatar)}
                   alt=""
                   width={56}
                   height={56}
+                  unoptimized={true}
                   className="h-14 w-14 shrink-0 rounded-lg ring-1 ring-border/50"
                 />
               )}

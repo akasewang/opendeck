@@ -1,5 +1,18 @@
 import type { NextConfig } from 'next'
 
+const IMAGE_CACHE_TTL_SECONDS = 60 * 60 * 24 * 7
+
+const allowedDevOrigins =
+  process.env.NODE_ENV === 'development'
+    ? Array.from(
+        new Set(
+          [process.env.DEV_MOBILE_HOST, ...(process.env.DEV_MOBILE_ALLOWED_HOSTS?.split(',') ?? [])]
+            .map((host) => host?.trim())
+            .filter((host): host is string => Boolean(host)),
+        ),
+      )
+    : []
+
 const securityHeaders = [
   { key: 'X-DNS-Prefetch-Control', value: 'on' },
   { key: 'X-Frame-Options', value: 'DENY' },
@@ -22,7 +35,12 @@ if (process.env.NODE_ENV === 'production') {
 }
 
 const nextConfig: NextConfig = {
+  ...(allowedDevOrigins.length ? { allowedDevOrigins } : {}),
   images: {
+    formats: ['image/webp'],
+    imageSizes: [16, 24, 28, 32, 48, 54, 56, 64, 96, 108, 112, 128, 256, 384],
+    minimumCacheTTL: IMAGE_CACHE_TTL_SECONDS,
+    qualities: [75],
     remotePatterns: [{ protocol: 'https', hostname: 'avatars.githubusercontent.com' }],
   },
   webpack(config, { isServer }) {

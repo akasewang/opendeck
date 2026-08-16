@@ -6,16 +6,10 @@ import type {
 } from '@/features/organizations/types/organization'
 import { isRecord } from '@/lib/api/input-normalization'
 
-function isOptionalString(value: unknown) {
-  return value === undefined || value === null || typeof value === 'string'
-}
+import { isNonNegativeInteger, isOptionalString } from '@/lib/api/type-guards'
 
 function isOptionalCount(value: unknown) {
-  return (
-    value === undefined ||
-    value === null ||
-    (typeof value === 'number' && Number.isSafeInteger(value) && value >= 0)
-  )
+  return value === undefined || value === null || isNonNegativeInteger(value)
 }
 
 export function isOrganization(value: unknown): value is Organization {

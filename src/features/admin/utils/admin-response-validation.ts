@@ -9,13 +9,7 @@ import type {
 } from '@/features/admin/types/admin-api'
 import { isRecord } from '@/lib/api/input-normalization'
 
-function isOptionalString(value: unknown) {
-  return value === null || typeof value === 'string'
-}
-
-function isCount(value: unknown) {
-  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0
-}
+import { isNonNegativeInteger, isNullableString } from '@/lib/api/type-guards'
 
 function isUser(value: unknown): value is AdminUser {
   return (
@@ -26,7 +20,7 @@ function isUser(value: unknown): value is AdminUser {
     (value.role === 'user' || value.role === 'admin') &&
     (value.status === 'active' || value.status === 'suspended') &&
     typeof value.createdAt === 'string' &&
-    isCount(value.sessionCount)
+    isNonNegativeInteger(value.sessionCount)
   )
 }
 
@@ -34,10 +28,10 @@ function isInvite(value: unknown): value is AdminInvite {
   return (
     isRecord(value) &&
     typeof value.id === 'string' &&
-    isOptionalString(value.email) &&
+    isNullableString(value.email) &&
     typeof value.role === 'string' &&
     typeof value.expiresAt === 'string' &&
-    isOptionalString(value.acceptedAt)
+    isNullableString(value.acceptedAt)
   )
 }
 
@@ -47,7 +41,7 @@ function isAllowlistRule(value: unknown): value is AdminAllowlistRule {
     typeof value.id === 'string' &&
     typeof value.pattern === 'string' &&
     typeof value.kind === 'string' &&
-    isOptionalString(value.note)
+    isNullableString(value.note)
   )
 }
 
@@ -74,12 +68,12 @@ export function isAdminInviteResponse(value: unknown): value is AdminInviteRespo
 export function isAdminIngestionDashboard(value: unknown): value is AdminIngestionDashboard {
   if (!isRecord(value) || !isRecord(value.stats)) return false
   return (
-    isCount(value.stats.repos) &&
-    isCount(value.stats.users) &&
-    isCount(value.stats.savedSearches) &&
-    isCount(value.stats.sharedCollections) &&
+    isNonNegativeInteger(value.stats.repos) &&
+    isNonNegativeInteger(value.stats.users) &&
+    isNonNegativeInteger(value.stats.savedSearches) &&
+    isNonNegativeInteger(value.stats.sharedCollections) &&
     isRecord(value.stats.emailDeliveries) &&
-    Object.values(value.stats.emailDeliveries).every(isCount) &&
+    Object.values(value.stats.emailDeliveries).every(isNonNegativeInteger) &&
     Array.isArray(value.latestRuns) &&
     value.latestRuns.every(
       (run) =>
@@ -87,21 +81,21 @@ export function isAdminIngestionDashboard(value: unknown): value is AdminIngesti
         typeof run.id === 'string' &&
         typeof run.kind === 'string' &&
         typeof run.status === 'string' &&
-        isCount(run.tokensUsed) &&
-        (run.rateLimitRemaining === null || isCount(run.rateLimitRemaining)) &&
+        isNonNegativeInteger(run.tokensUsed) &&
+        (run.rateLimitRemaining === null || isNonNegativeInteger(run.rateLimitRemaining)) &&
         typeof run.startedAt === 'string' &&
-        isOptionalString(run.finishedAt) &&
-        isOptionalString(run.error),
+        isNullableString(run.finishedAt) &&
+        isNullableString(run.error),
     ) &&
     Array.isArray(value.auditLogs) &&
     value.auditLogs.every(
       (log) =>
         isRecord(log) &&
         typeof log.id === 'string' &&
-        isOptionalString(log.adminId) &&
+        isNullableString(log.adminId) &&
         typeof log.action === 'string' &&
         typeof log.targetType === 'string' &&
-        isOptionalString(log.targetId) &&
+        isNullableString(log.targetId) &&
         isRecord(log.metadata) &&
         typeof log.createdAt === 'string',
     )

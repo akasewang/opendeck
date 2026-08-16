@@ -1,4 +1,8 @@
 import {
+  REPOSITORY_INGESTION_LEASE_KEY,
+  REPOSITORY_INGESTION_LEASE_MS,
+} from '@/features/ingestion/services/ingestion-lease'
+import {
   DEFAULT_DISCOVERY_LIMIT_PER_SOURCE,
   ingestDiscoverySources,
   ingestStaleMetadata,
@@ -7,7 +11,6 @@ import {
 import { withJobLease } from '@/lib/jobs/job-lease-service'
 
 const ALLOWED_INGEST_KINDS = new Set(['trending', 'discovery', 'curated', 'metadata'])
-const REPOSITORY_INGESTION_LEASE_MS = 20 * 60 * 1000
 
 function parseLimit(value: string | undefined, fallback: number) {
   if (!value) return fallback
@@ -26,7 +29,7 @@ export async function runIngestCommand(args: string[]) {
   }
 
   const execution = await withJobLease(
-    'repository-ingestion',
+    REPOSITORY_INGESTION_LEASE_KEY,
     REPOSITORY_INGESTION_LEASE_MS,
     async () => {
       if (kind === 'discovery' || kind === 'curated') {

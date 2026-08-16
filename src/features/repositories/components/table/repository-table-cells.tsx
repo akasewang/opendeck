@@ -6,6 +6,7 @@ import { ColorfulTag, SimpleTag } from '@/components/ui/tag'
 import type { RepositoryListItem } from '@/features/repositories/types/repository'
 import type { RepositoryTableColumnKey } from '@/features/repositories/types/repository-table'
 import { getLanguageTagStyle } from '@/features/repositories/utils/repository-display'
+import { githubAvatarUrl } from '@/lib/github/avatar'
 import { cn } from '@/utils/cn'
 import { formatNumber } from '@/utils/format-number'
 
@@ -17,9 +18,7 @@ export const renderCell = (record: RepositoryListItem, key: RepositoryTableColum
 
   switch (key) {
     case 'name': {
-      const avatarSrc = record.imgUrl
-        ? `${record.imgUrl}${record.imgUrl.includes('?') ? '&' : '?'}s=24`
-        : undefined
+      const avatarSrc = record.imgUrl ? githubAvatarUrl(record.imgUrl) : undefined
       const fullName = record.name
       const slash = fullName.indexOf('/')
       const owner = slash > -1 ? fullName.slice(0, slash) : null
@@ -32,6 +31,7 @@ export const renderCell = (record: RepositoryListItem, key: RepositoryTableColum
               alt=""
               width={24}
               height={24}
+              unoptimized={true}
               className="shrink-0 rounded-md ring-1 ring-border/50 transition group-hover:opacity-80"
             />
           )}

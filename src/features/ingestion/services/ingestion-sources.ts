@@ -1,3 +1,5 @@
+import { DAY_MS } from '@/utils/time'
+
 type DiscoverySource = {
   id: string
   label: string
@@ -6,18 +8,40 @@ type DiscoverySource = {
 }
 
 function isoDateDaysAgo(days: number, now = new Date()) {
-  return new Date(now.getTime() - days * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+  return new Date(now.getTime() - days * DAY_MS).toISOString().split('T')[0]
 }
 
 export function getDiscoverySources(now = new Date()): DiscoverySource[] {
   const activeAfter = isoDateDaysAgo(365, now)
-  const veryActiveAfter = isoDateDaysAgo(180, now)
+  const freshAfter = isoDateDaysAgo(180, now)
+  const veryFreshAfter = isoDateDaysAgo(90, now)
   const recentAfter = isoDateDaysAgo(60, now)
   const publicContributorRepo = `is:public archived:false fork:false mirror:false template:false`
   const maintainedContributorRepo = `${publicContributorRepo} pushed:>${activeAfter}`
-  const veryActiveContributorRepo = `${publicContributorRepo} pushed:>${veryActiveAfter}`
+  const freshContributorRepo = `${publicContributorRepo} pushed:>${freshAfter}`
+  const veryFreshContributorRepo = `${publicContributorRepo} pushed:>${veryFreshAfter}`
+
+  const ecosystemLane = (language: string) => ({
+    id: language.toLowerCase(),
+    label: `${language} ecosystem`,
+    query: `language:${language} good-first-issues:>0 stars:50..25000 ${freshContributorRepo} sort:updated-desc`,
+    tags: [language.toLowerCase(), 'starter-friendly', 'contributor-ready'],
+  })
+
+  const topicLane = (topic: string, label: string, extraTags: string[] = []) => ({
+    id: topic,
+    label,
+    query: `topic:${topic} stars:50..25000 issues:>3 ${freshContributorRepo} sort:updated-desc`,
+    tags: [topic, ...extraTags, 'contributor-ready'],
+  })
 
   return [
+    {
+      id: 'good-first-and-help-wanted',
+      label: 'Repos actively inviting contributors',
+      query: `good-first-issues:>0 help-wanted-issues:>0 stars:20..25000 ${freshContributorRepo} sort:updated-desc`,
+      tags: ['starter-friendly', 'good-first-issue', 'help-wanted'],
+    },
     {
       id: 'good-first-issues',
       label: 'Repos with good first issues',
@@ -45,7 +69,7 @@ export function getDiscoverySources(now = new Date()): DiscoverySource[] {
     {
       id: 'actively-maintained',
       label: 'Actively maintained contributor-ready repositories',
-      query: `stars:50..50000 issues:>5 ${maintainedContributorRepo} sort:updated-desc`,
+      query: `stars:50..20000 issues:5..1500 ${veryFreshContributorRepo} sort:updated-desc`,
       tags: ['maintained', 'contributor-ready'],
     },
     {
@@ -57,50 +81,19 @@ export function getDiscoverySources(now = new Date()): DiscoverySource[] {
     {
       id: 'fast-moving',
       label: 'Fast-moving repositories updated recently',
-      query: `stars:25..30000 issues:>3 ${veryActiveContributorRepo} sort:updated-desc`,
+      query: `stars:25..20000 issues:3..1500 ${veryFreshContributorRepo} sort:updated-desc`,
       tags: ['active', 'contributor-ready'],
     },
-    {
-      id: 'developer-tools',
-      label: 'Developer tools',
-      query: `topic:developer-tools stars:25..50000 issues:>3 ${maintainedContributorRepo} sort:updated-desc`,
-      tags: ['developer-tools', 'contributor-ready'],
-    },
-    {
-      id: 'cli-tools',
-      label: 'CLI tools',
-      query: `topic:cli stars:25..50000 issues:>3 ${maintainedContributorRepo} sort:updated-desc`,
-      tags: ['cli', 'developer-tools', 'contributor-ready'],
-    },
-    {
-      id: 'databases',
-      label: 'Databases and storage',
-      query: `topic:database stars:25..50000 issues:>3 ${maintainedContributorRepo} sort:updated-desc`,
-      tags: ['database', 'contributor-ready'],
-    },
-    {
-      id: 'observability',
-      label: 'Observability',
-      query: `topic:observability stars:25..50000 issues:>3 ${maintainedContributorRepo} sort:updated-desc`,
-      tags: ['observability', 'contributor-ready'],
-    },
-    {
-      id: 'security',
-      label: 'Security tooling',
-      query: `topic:security stars:25..50000 issues:>3 ${maintainedContributorRepo} sort:updated-desc`,
-      tags: ['security', 'contributor-ready'],
-    },
-    {
-      id: 'typescript',
-      label: 'TypeScript ecosystem',
-      query: `language:TypeScript stars:25..50000 issues:>3 ${maintainedContributorRepo} sort:updated-desc`,
-      tags: ['typescript', 'contributor-ready'],
-    },
-    {
-      id: 'rust',
-      label: 'Rust ecosystem',
-      query: `language:Rust stars:25..50000 issues:>3 ${maintainedContributorRepo} sort:updated-desc`,
-      tags: ['rust', 'contributor-ready'],
-    },
+    topicLane('developer-tools', 'Developer tools', ['developer-tools']),
+    topicLane('cli', 'CLI tools', ['cli', 'developer-tools']),
+    topicLane('database', 'Databases and storage', ['database']),
+    topicLane('observability', 'Observability', ['observability']),
+    topicLane('security', 'Security tooling', ['security']),
+    ecosystemLane('TypeScript'),
+    ecosystemLane('Python'),
+    ecosystemLane('Rust'),
+    ecosystemLane('Go'),
+    ecosystemLane('JavaScript'),
+    ecosystemLane('Java'),
   ]
 }

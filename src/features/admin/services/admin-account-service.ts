@@ -26,6 +26,7 @@ import {
   cleanUuid,
   parseIntegerValue,
 } from '@/lib/api/input-normalization'
+import { DAY_MS } from '@/utils/time'
 
 function normalizeRole(value: unknown): AuthRole {
   return value === 'admin' ? 'admin' : 'user'
@@ -121,7 +122,7 @@ export async function createInvite(adminId: string, body: Record<string, unknown
     throw new Error('Invite duration must be between 1 and 365 days.')
   }
   const days = parsedDays
-  const expiresAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000)
+  const expiresAt = new Date(Date.now() + days * DAY_MS)
   const inviteWrite = db
     .insert(authInvites)
     .values({

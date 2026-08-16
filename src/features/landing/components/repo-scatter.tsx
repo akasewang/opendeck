@@ -3,6 +3,7 @@
 import { useReducedMotion } from 'framer-motion'
 import Image from 'next/image'
 import { useEffect, useRef } from 'react'
+import { githubAvatarUrl } from '@/lib/github/avatar'
 
 export type ScatterItem = {
   id: string
@@ -336,11 +337,12 @@ export default function RepoScatter({ items }: { items: ScatterItem[] }) {
           className="absolute left-0 top-0 rounded-lg bg-background shadow-[0_0_0_1px_oklch(0%_0_0_/_0.55),0_10px_20px_-6px_oklch(0%_0_0_/_0.7),0_3px_6px_-3px_oklch(0%_0_0_/_0.6)] will-change-transform"
         >
           <Image
-            src={item.imgUrl}
+            src={githubAvatarUrl(item.imgUrl)}
             alt=""
-            fill
-            sizes={`${SIZE}px`}
+            width={SIZE}
+            height={SIZE}
             draggable={false}
+            unoptimized={true}
             className="absolute inset-0 h-full w-full rounded-xl object-cover"
           />
           <div className="pointer-events-none absolute inset-0 rounded-lg bg-gradient-to-b from-white/20 via-transparent to-black/25 shadow-[inset_0_1.5px_0_0_oklch(100%_0_0_/_0.45),inset_0_-3px_6px_-1px_oklch(0%_0_0_/_0.55),inset_0_0_0_1px_oklch(100%_0_0_/_0.12)]" />

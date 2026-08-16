@@ -3,8 +3,8 @@
 import { useEffect, useState } from 'react'
 import { API_ROUTES, withQuery } from '@/config/routes'
 import type { RepositoryContributor } from '@/features/repositories/types/repository'
-import { isRecord } from '@/lib/api/input-normalization'
 import { apiErrorMessage } from '@/lib/api/errors'
+import { isRecord } from '@/lib/api/input-normalization'
 
 type ContributorPayload = {
   contributors: RepositoryContributor[]

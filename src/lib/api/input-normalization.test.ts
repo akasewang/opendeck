@@ -5,6 +5,7 @@ import {
   cleanUuid,
   normalizeNumber,
   parseIntegerValue,
+  parseRequestIp,
   safeRelativePath,
 } from '@/lib/api/input-normalization'
 
@@ -42,4 +43,14 @@ test('identifier, list and numeric normalization enforce their runtime bounds', 
   assert.equal(normalizeNumber('invalid', 5, 100), 5)
   assert.equal(parseIntegerValue('42'), 42)
   assert.equal(parseIntegerValue('4.2'), undefined)
+})
+
+test('parseRequestIp takes the first forwarded hop and falls back to the real-ip header', () => {
+  assert.equal(
+    parseRequestIp(new Headers({ 'x-forwarded-for': '203.0.113.7, 10.0.0.1' })),
+    '203.0.113.7',
+  )
+  assert.equal(parseRequestIp(new Headers({ 'x-real-ip': '198.51.100.4' })), '198.51.100.4')
+  assert.equal(parseRequestIp(new Headers()), null)
+  assert.equal(parseRequestIp(undefined), null)
 })

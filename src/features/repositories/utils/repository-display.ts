@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react'
 import LANGUAGE_COLORS from '@/features/repositories/data/language-colors.json'
 import { hexToOklch, maxSrgbChroma } from '@/utils/oklch'
+import { DAY_MS } from '@/utils/time'
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value))
 
@@ -85,7 +86,7 @@ export const formatRelativeTime = (value?: string | null): string | null => {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return null
 
-  const days = Math.floor((Date.now() - date.getTime()) / (24 * 60 * 60 * 1000))
+  const days = Math.floor((Date.now() - date.getTime()) / DAY_MS)
   if (days <= 0) return 'today'
   if (days === 1) return 'yesterday'
   if (days < 30) return `${days}d ago`

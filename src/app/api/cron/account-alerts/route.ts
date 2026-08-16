@@ -5,10 +5,11 @@ import {
   createPipelineReminders,
   sendDueEmailDigests,
 } from '@/features/account/services/account-automation-service'
-import { isCronAuthorized } from '@/lib/security/cron-auth'
 import { parseOptionalInteger } from '@/lib/api/query-parameters'
 import { withJobLease } from '@/lib/jobs/job-lease-service'
+import { isCronAuthorized } from '@/lib/security/cron-auth'
 import { cleanupExpiredRateLimits } from '@/lib/security/rate-limit'
+import { DAY_MS } from '@/utils/time'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -44,7 +45,7 @@ async function run(req: NextRequest) {
 
     const [goodFirstIssues, savedSearches, pipelineReminders, digests] = execution.value
     try {
-      await cleanupExpiredRateLimits(new Date(Date.now() - 24 * 60 * 60 * 1000))
+      await cleanupExpiredRateLimits(new Date(Date.now() - DAY_MS))
     } catch (error) {
       console.error('Expired rate-limit buckets could not be cleaned up', error)
     }

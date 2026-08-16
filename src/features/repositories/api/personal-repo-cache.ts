@@ -47,9 +47,7 @@ export function setCachedPersonalRepoState(
   personalRepoStateCache.set(personalRepoCacheKey(userId, fullName), payload)
 }
 
-function isOptionalString(value: unknown): value is string | null {
-  return value === null || typeof value === 'string'
-}
+import { isNullableString } from '@/lib/api/type-guards'
 
 export function isPersonalRepoPayload(value: unknown): value is PersonalRepoPayload {
   if (
@@ -62,12 +60,12 @@ export function isPersonalRepoPayload(value: unknown): value is PersonalRepoPayl
   }
   const state = value.state
   if (
-    !isOptionalString(state.savedAt) ||
-    !isOptionalString(state.hiddenAt) ||
-    !isOptionalString(state.dismissedAt) ||
-    !isOptionalString(state.reviewedAt) ||
+    !isNullableString(state.savedAt) ||
+    !isNullableString(state.hiddenAt) ||
+    !isNullableString(state.dismissedAt) ||
+    !isNullableString(state.reviewedAt) ||
     !ACCOUNT_PIPELINE_STAGE_IDS.some((stage) => stage === state.pipelineStage) ||
-    !isOptionalString(state.note) ||
+    !isNullableString(state.note) ||
     typeof state.alertEnabled !== 'boolean'
   ) {
     return false

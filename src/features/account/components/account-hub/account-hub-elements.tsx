@@ -15,8 +15,9 @@ import { appRoute } from '@/config/routes'
 import type { AccountHubRepoWithState } from '@/features/account/types/account-hub'
 import { repositoryName, shortDescription } from '@/features/account/utils/account-formatters'
 import type { RepositoryApiItem } from '@/features/repositories/types/repository'
-import { formatNumber } from '@/utils/format-number'
+import { githubAvatarUrl } from '@/lib/github/avatar'
 import { cn } from '@/utils/cn'
+import { formatNumber } from '@/utils/format-number'
 
 export const ACCOUNT_HUB_LIST_CARD_CLASS = cardVariants({ interactive: true })
 
@@ -179,10 +180,11 @@ export function RepoRow({
       <div className="flex items-center gap-2.5">
         {avatar && (
           <Image
-            src={`${avatar}${avatar.includes('?') ? '&' : '?'}s=48`}
+            src={githubAvatarUrl(avatar)}
             alt=""
             width={24}
             height={24}
+            unoptimized={true}
             className="h-6 w-6 shrink-0 rounded-md ring-1 ring-border/50"
           />
         )}

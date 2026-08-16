@@ -1,6 +1,6 @@
+import { isRecord } from '@/lib/api/input-normalization'
 import { githubFetch } from '@/lib/github/client'
 import { absolutizeReadmeHtml, sanitizeRepositoryHtml } from '@/lib/github/markdown'
-import { isRecord } from '@/lib/api/input-normalization'
 
 const GITHUB_DOCUMENT_REVALIDATE_SECONDS = 3600
 

@@ -1,3 +1,5 @@
+import { isEmailAddress } from '@/utils/validation'
+
 type ServerEnvName =
   | 'DATABASE_URL'
   | 'GH_INGEST_TOKEN'
@@ -11,7 +13,6 @@ type ServerEnvName =
   | 'EMAIL_FROM'
   | 'RESEND_API_KEY'
 
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const DOMAIN_PATTERN = /^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/
 
 function readEnv(name: ServerEnvName) {
@@ -36,7 +37,7 @@ function readCsv(name: ServerEnvName) {
 
 function readEmails(name: ServerEnvName) {
   const emails = readCsv(name).map((email) => email.toLowerCase())
-  const invalid = emails.find((email) => email.length > 254 || !EMAIL_PATTERN.test(email))
+  const invalid = emails.find((email) => !isEmailAddress(email))
   if (invalid) throw new Error(`${name} contains an invalid email address`)
   return emails
 }

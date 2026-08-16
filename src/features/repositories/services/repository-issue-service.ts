@@ -5,6 +5,7 @@ import { safeErrorContext } from '@/lib/api/errors'
 import { isRecord, parseNullableDate } from '@/lib/api/input-normalization'
 import { githubFetchJson } from '@/lib/github/client'
 import { withJobLease } from '@/lib/jobs/job-lease-service'
+import { DAY_MS } from '@/utils/time'
 
 const REPOSITORY_ISSUE_SYNC_TTL_MS = 15 * 60 * 1000
 const REPOSITORY_ISSUE_LEASE_MS = 2 * 60 * 1000
@@ -91,9 +92,7 @@ export function mapRepositoryIssue(row: typeof repoIssues.$inferSelect, fullName
   const labels = row.labels ?? []
   const lowerLabels = labels.map((label) => label.toLowerCase())
   const updatedDays =
-    row.updatedAt === null
-      ? 999
-      : Math.floor((Date.now() - row.updatedAt.getTime()) / (24 * 60 * 60 * 1000))
+    row.updatedAt === null ? 999 : Math.floor((Date.now() - row.updatedAt.getTime()) / DAY_MS)
   const score =
     (lowerLabels.some((label) => label.includes('good first')) ? 40 : 0) +
     (lowerLabels.some((label) => label.includes('help wanted')) ? 25 : 0) +

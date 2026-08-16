@@ -8,10 +8,11 @@ import { fieldVariants } from '@/components/ui/field'
 import { Kbd } from '@/components/ui/kbd'
 import { ScrollShadow } from '@/components/ui/scroll-shadow'
 import { Skeleton, skeletonStagger } from '@/components/ui/skeleton'
-import { API_ROUTES, withQuery } from '@/config/routes'
 import { MOTION_SPRING } from '@/config/motion'
+import { API_ROUTES, withQuery } from '@/config/routes'
 import type { RepositoryApiItem } from '@/features/repositories/types/repository'
 import { parseRepositoryListPayload } from '@/features/repositories/utils/repository-response-validation'
+import { githubAvatarUrl } from '@/lib/github/avatar'
 import { cn } from '@/utils/cn'
 import { formatNumber } from '@/utils/format-number'
 
@@ -285,10 +286,11 @@ export function RepoSearchInput({
                         >
                           {avatar ? (
                             <Image
-                              src={`${avatar}${avatar.includes('?') ? '&' : '?'}s=24`}
+                              src={githubAvatarUrl(avatar)}
                               alt=""
                               width={24}
                               height={24}
+                              unoptimized={true}
                               className="shrink-0 rounded-md ring-1 ring-border/50"
                             />
                           ) : (

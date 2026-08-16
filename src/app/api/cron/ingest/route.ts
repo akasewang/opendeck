@@ -1,5 +1,9 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import {
+  REPOSITORY_INGESTION_LEASE_KEY,
+  REPOSITORY_INGESTION_LEASE_MS,
+} from '@/features/ingestion/services/ingestion-lease'
+import {
   DEFAULT_DISCOVERY_LIMIT_PER_SOURCE,
   ingestDiscoverySources,
   ingestStaleMetadata,
@@ -8,13 +12,15 @@ import {
 import { REPOSITORY_INGEST_KINDS } from '@/features/repositories/constants/repository-options'
 import { badRequest } from '@/features/repositories/services/repository-response'
 import { invalidEnumMessage, parseEnum, parseOptionalInteger } from '@/lib/api/query-parameters'
-import { isCronAuthorized } from '@/lib/security/cron-auth'
 import { withJobLease } from '@/lib/jobs/job-lease-service'
-
-const REPOSITORY_INGESTION_LEASE_MS = 20 * 60 * 1000
+import { isCronAuthorized } from '@/lib/security/cron-auth'
 
 async function runWithIngestionLease(work: () => Promise<NextResponse>) {
-  const execution = await withJobLease('repository-ingestion', REPOSITORY_INGESTION_LEASE_MS, work)
+  const execution = await withJobLease(
+    REPOSITORY_INGESTION_LEASE_KEY,
+    REPOSITORY_INGESTION_LEASE_MS,
+    work,
+  )
   return execution.acquired
     ? execution.value
     : NextResponse.json({ ok: true, skipped: true, reason: execution.reason })

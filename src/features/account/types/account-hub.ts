@@ -1,8 +1,8 @@
-import type { RepositoryApiItem } from '@/features/repositories/types/repository'
 import type {
   AccountDigestFrequency,
   AccountPipelineStage,
 } from '@/features/account/constants/account-options'
+import type { RepositoryApiItem } from '@/features/repositories/types/repository'
 import type { RepoSearchParams } from '@/features/repositories/types/repository-query'
 
 type RepoState = {

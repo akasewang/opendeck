@@ -5,11 +5,11 @@ import Image from 'next/image'
 import { useState } from 'react'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { TextArea } from '@/components/ui/text-area'
 import { ScrollShadow } from '@/components/ui/scroll-shadow'
 import { Skeleton, skeletonStagger } from '@/components/ui/skeleton'
 import { StatusPill } from '@/components/ui/status-pill'
 import { SimpleTag } from '@/components/ui/tag'
+import { TextArea } from '@/components/ui/text-area'
 import { toast } from '@/components/ui/toast'
 import { API_ROUTES } from '@/config/routes'
 import {
@@ -25,8 +25,9 @@ import type {
 } from '@/features/repositories/types/repository'
 import { formatDate, getLanguageTagStyle } from '@/features/repositories/utils/repository-display'
 import { isRepositoryJournalPayload } from '@/features/repositories/utils/repository-response-validation'
-import { cn } from '@/utils/cn'
 import { apiErrorMessage } from '@/lib/api/errors'
+import { githubAvatarUrl } from '@/lib/github/avatar'
+import { cn } from '@/utils/cn'
 import { formatNumber } from '@/utils/format-number'
 
 const COLUMN_LABEL_CLASS =
@@ -400,12 +401,11 @@ export function ContributorsPanel({
               >
                 {contributor.avatarUrl ? (
                   <Image
-                    src={`${contributor.avatarUrl}${
-                      contributor.avatarUrl.includes('?') ? '&' : '?'
-                    }s=56`}
+                    src={githubAvatarUrl(contributor.avatarUrl)}
                     alt=""
                     width={28}
                     height={28}
+                    unoptimized={true}
                     className="h-7 w-7 shrink-0 rounded-full ring-1 ring-border/50"
                   />
                 ) : (

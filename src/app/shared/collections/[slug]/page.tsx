@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
-import { getPublicCollection } from '@/features/collections/services/public-collection-service'
 import PublicCollectionPage from '@/features/collections/components/public-collection-page'
+import { getPublicCollection } from '@/features/collections/services/public-collection-service'
 import { createPageMetadata } from '@/lib/seo/metadata'
 
 type PageProps = {

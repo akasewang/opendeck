@@ -15,6 +15,7 @@ import { REPOSITORY_SEARCH_SORTS } from '@/features/repositories/constants/repos
 import { searchRepos } from '@/features/repositories/services/repository-query-service'
 import { isEmailDeliveryConfigured, sendEmail } from '@/lib/email/email-client'
 import { renderEmail } from '@/lib/email/email-templates'
+import { DAY_MS } from '@/utils/time'
 
 function addUtcMonth(date: Date) {
   const originalDay = date.getUTCDate()
@@ -125,7 +126,7 @@ export async function checkSavedSearchAlerts(limit = 50) {
 }
 
 export async function createPipelineReminders(limit = 500) {
-  const staleDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+  const staleDate = new Date(Date.now() - 7 * DAY_MS)
   const rows = await db
     .select({ state: userRepoStates, repo: repos })
     .from(userRepoStates)
@@ -142,7 +143,7 @@ export async function createPipelineReminders(limit = 500) {
     .limit(limit)
 
   let created = 0
-  const reminderCutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+  const reminderCutoff = new Date(Date.now() - 7 * DAY_MS)
   for (const row of rows) {
     const [existing] = await db
       .select({ id: userAlerts.id })

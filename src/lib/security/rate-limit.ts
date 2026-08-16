@@ -4,6 +4,7 @@ import type { NextRequest } from 'next/server'
 import { serverEnv } from '@/config/server-env'
 import { db } from '@/db/client'
 import { rateLimitBuckets } from '@/db/schema'
+import { parseRequestIp } from '@/lib/api/input-normalization'
 
 function hashRateLimitKey(key: string) {
   return createHmac('sha256', serverEnv.authSecret).update(`rate-limit:${key}`).digest('hex')
@@ -53,9 +54,5 @@ export async function cleanupExpiredRateLimits(before = new Date()) {
 }
 
 export function requestIp(request: NextRequest) {
-  const value =
-    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-    request.headers.get('x-real-ip') ||
-    'unknown'
-  return value.replace(/[\u0000-\u001f\u007f]/g, '').slice(0, 128) || 'unknown'
+  return parseRequestIp(request.headers) ?? 'unknown'
 }

@@ -6,9 +6,8 @@ import { Skeleton, skeletonStagger } from '@/components/ui/skeleton'
 import { useSkeletonRowCount } from '@/hooks/use-skeleton-row-count'
 import { cn } from '@/utils/cn'
 import { TableHeadRow } from './repository-table-header'
+import { NAME_COLUMN_BOUNDS } from './table-layout'
 
-const NAME_COLUMN_BOUNDS =
-  'w-auto min-w-[11rem] max-w-[22rem] sm:min-w-[18rem] sm:max-w-[28rem] md:min-w-[20rem] md:max-w-[34rem] lg:min-w-[24rem] lg:max-w-[42rem] xl:max-w-[50rem] 2xl:max-w-[58rem]'
 const SKELETON_NAME_WIDTHS = ['w-36', 'w-52', 'w-28', 'w-44', 'w-60', 'w-32', 'w-48', 'w-40']
 const SKELETON_TOPIC_WIDTHS: Array<[string, string]> = [
   ['w-16', 'w-10'],

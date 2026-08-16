@@ -11,8 +11,9 @@ import { Input } from '@/components/ui/input'
 import Select from '@/components/ui/select'
 import { Skeleton, skeletonStagger } from '@/components/ui/skeleton'
 import { toast } from '@/components/ui/toast'
-import { API_ROUTES, appRoute } from '@/config/routes'
 import { MOTION_SPRING } from '@/config/motion'
+import { API_ROUTES, appRoute } from '@/config/routes'
+import { postAccountApi } from '@/features/account/api/account-api-client'
 import {
   ACCOUNT_HUB_ICON_BUTTON_CLASS,
   ACCOUNT_HUB_LIST_CARD_CLASS,
@@ -22,7 +23,6 @@ import {
   ACCOUNT_HUB_SECTION_STAGGER,
 } from '@/features/account/components/account-hub/account-hub-elements'
 import type { AccountHubTabId } from '@/features/account/constants/account-hub'
-import { postAccountApi } from '@/features/account/api/account-api-client'
 import type { AccountOverview } from '@/features/account/types/account-hub'
 import {
   formatWhen,
@@ -30,8 +30,9 @@ import {
   repositoryName,
 } from '@/features/account/utils/account-formatters'
 import type { RepositoryApiItem } from '@/features/repositories/types/repository'
-import { formatNumber } from '@/utils/format-number'
+import { githubAvatarUrl } from '@/lib/github/avatar'
 import { cn } from '@/utils/cn'
+import { formatNumber } from '@/utils/format-number'
 
 const DISMISS_BUTTON_VARIANTS: Variants = {
   rest: { scale: 1 },
@@ -338,10 +339,11 @@ function RecommendationsPanel({
                 >
                   {avatar && (
                     <Image
-                      src={`${avatar}${avatar.includes('?') ? '&' : '?'}s=48`}
+                      src={githubAvatarUrl(avatar)}
                       alt=""
                       width={24}
                       height={24}
+                      unoptimized={true}
                       className="h-6 w-6 shrink-0 rounded-md ring-1 ring-border/50"
                     />
                   )}

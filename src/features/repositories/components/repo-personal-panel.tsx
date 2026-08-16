@@ -9,17 +9,17 @@ import Select from '@/components/ui/select'
 import { toast } from '@/components/ui/toast'
 import { API_ROUTES, withQuery } from '@/config/routes'
 import { useAuth } from '@/features/auth/providers/auth-provider'
-import { sectionItem } from '@/features/repositories/motion/repo-detail-motion'
 import {
   getCachedPersonalRepoState,
   hasCachedPersonalRepoState,
   isPersonalRepoPayload,
-  setCachedPersonalRepoState,
   type PersonalRepoPayload,
+  setCachedPersonalRepoState,
 } from '@/features/repositories/api/personal-repo-cache'
+import { sectionItem } from '@/features/repositories/motion/repo-detail-motion'
 import type { RepositoryListItem } from '@/features/repositories/types/repository'
-import { isRecord } from '@/lib/api/input-normalization'
 import { apiErrorMessage } from '@/lib/api/errors'
+import { isRecord } from '@/lib/api/input-normalization'
 import { cn } from '@/utils/cn'
 
 export function PersonalRepoPanel({

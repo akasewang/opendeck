@@ -12,6 +12,7 @@ import {
 } from '@/features/repositories/services/repository-issue-service'
 import { toGithubRepository } from '@/features/repositories/services/repository-query-service'
 import { cleanText } from '@/lib/api/input-normalization'
+import { DAY_MS } from '@/utils/time'
 
 export async function getRepoInsight(fullName: string) {
   const [repo] = await db.select().from(repos).where(eq(repos.fullName, fullName)).limit(1)
@@ -51,7 +52,7 @@ export async function getRepoInsight(fullName: string) {
     100,
     Math.max(
       0,
-      (repo.pushedAt && Date.now() - repo.pushedAt.getTime() < 90 * 24 * 60 * 60 * 1000 ? 35 : 10) +
+      (repo.pushedAt && Date.now() - repo.pushedAt.getTime() < 90 * DAY_MS ? 35 : 10) +
         Math.min(activeIssues.length * 5, 25) +
         Math.min(lowCommentIssues * 6, 24) +
         (repo.contributors > 5 ? 16 : repo.contributors > 1 ? 8 : 0),
@@ -65,7 +66,7 @@ export async function getRepoInsight(fullName: string) {
     responsivenessScore,
     qualitySignals: {
       likelyResourceCollection: NON_PROJECT_TOPICS.some((topic) => repo.topics.includes(topic)),
-      stale: !repo.pushedAt || Date.now() - repo.pushedAt.getTime() > 365 * 24 * 60 * 60 * 1000,
+      stale: !repo.pushedAt || Date.now() - repo.pushedAt.getTime() > 365 * DAY_MS,
       archived: repo.isArchived,
       issueQueue: repo.openIssues,
       contributorCount: repo.contributors,

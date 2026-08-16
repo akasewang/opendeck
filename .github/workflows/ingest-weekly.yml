@@ -1,15 +1,16 @@
-name: Ingest daily
+name: Ingest weekly
 
 on:
   schedule:
-    - cron: "0 2 * * *"
+    # Sundays at 02:00 UTC, matching the seven-day image-cache cadence.
+    - cron: "0 2 * * 0"
   workflow_dispatch: {}
 
 permissions:
   contents: read
 
 concurrency:
-  group: ingest-daily
+  group: ingest-weekly
   cancel-in-progress: false
 
 jobs:

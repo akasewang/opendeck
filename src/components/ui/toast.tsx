@@ -2,8 +2,8 @@
 
 import { Icon } from '@iconify/react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { MOTION_SPRING } from '@/config/motion'
 import { useEffect, useState } from 'react'
+import { MOTION_SPRING } from '@/config/motion'
 import { cn } from '@/utils/cn'
 
 type ToastTone = 'success' | 'error'

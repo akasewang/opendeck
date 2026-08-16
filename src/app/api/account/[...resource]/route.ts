@@ -40,8 +40,8 @@ import {
   getUserFromRequest,
 } from '@/features/auth/services/authentication-service'
 import { safeErrorContext } from '@/lib/api/errors'
-import { readJsonObject } from '@/lib/api/request-body'
 import { parseOptionalInteger } from '@/lib/api/query-parameters'
+import { readJsonObject } from '@/lib/api/request-body'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'

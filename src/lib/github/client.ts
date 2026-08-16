@@ -1,9 +1,9 @@
+import { isRecord } from '@/lib/api/input-normalization'
 import {
   getNextGithubToken,
   parkGithubToken,
   updateGithubTokenRateLimit,
 } from '@/lib/github/tokens'
-import { isRecord } from '@/lib/api/input-normalization'
 
 type GithubFetchOptions = {
   method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'

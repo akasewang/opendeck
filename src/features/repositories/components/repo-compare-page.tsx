@@ -9,15 +9,16 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { ErrorBanner } from '@/components/ui/error-banner'
 import { Skeleton, SkeletonPanel } from '@/components/ui/skeleton'
 import { toast } from '@/components/ui/toast'
-import { API_ROUTES, APP_ROUTES, appRoute, withQuery } from '@/config/routes'
 import { MOTION_SPRING } from '@/config/motion'
+import { API_ROUTES, APP_ROUTES, appRoute, withQuery } from '@/config/routes'
 import PageHeader from '@/features/dashboard/components/page-header'
 import PageShell from '@/features/dashboard/components/page-shell'
 import { RepoSearchInput } from '@/features/repositories/components/repo-search-input'
 import { formatRelativeTime } from '@/features/repositories/utils/repository-display'
 import { isRepositoryInsight } from '@/features/repositories/utils/repository-response-validation'
-import { isRecord } from '@/lib/api/input-normalization'
 import { apiErrorMessage } from '@/lib/api/errors'
+import { isRecord } from '@/lib/api/input-normalization'
+import { githubAvatarUrl } from '@/lib/github/avatar'
 import { cn } from '@/utils/cn'
 import { formatNumber } from '@/utils/format-number'
 
@@ -456,10 +457,11 @@ export default function ComparePage() {
                           <div className="flex min-w-0 items-center gap-2.5">
                             {avatar && (
                               <Image
-                                src={`${avatar}${avatar.includes('?') ? '&' : '?'}s=28`}
+                                src={githubAvatarUrl(avatar)}
                                 alt=""
                                 width={28}
                                 height={28}
+                                unoptimized={true}
                                 className="shrink-0 rounded-md ring-1 ring-border/50"
                               />
                             )}

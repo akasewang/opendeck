@@ -6,10 +6,12 @@ import { db } from '@/db/client'
 import { authSessions, authUsers } from '@/db/schema'
 import type { AuthUser } from '@/features/auth/types/authentication'
 import { safeErrorContext } from '@/lib/api/errors'
+import { parseRequestIp } from '@/lib/api/input-normalization'
+import { DAY_MS } from '@/utils/time'
+import { isEmailAddress } from '@/utils/validation'
 
 export const SESSION_COOKIE = 'opendeck_session'
 const SESSION_DAYS = 30
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 type AuthUserRow = typeof authUsers.$inferSelect
 type AuthPublicSource = Pick<AuthUserRow, 'id' | 'name' | 'email' | 'role' | 'status'>
@@ -19,7 +21,7 @@ export function normalizeEmail(value: unknown) {
 }
 
 export function isValidEmail(email: string) {
-  return EMAIL_PATTERN.test(email) && email.length <= 254
+  return isEmailAddress(email)
 }
 
 export function normalizeName(value: unknown) {
@@ -49,15 +51,11 @@ export function createOpaqueToken(bytes = 32) {
 }
 
 function clientIp(request?: NextRequest) {
-  const value =
-    request?.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-    request?.headers.get('x-real-ip')?.trim() ||
-    null
-  return value?.slice(0, 200) ?? null
+  return parseRequestIp(request?.headers)
 }
 
 function sessionExpiresAt() {
-  return new Date(Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000)
+  return new Date(Date.now() + SESSION_DAYS * DAY_MS)
 }
 
 export function prepareSession(request?: NextRequest) {

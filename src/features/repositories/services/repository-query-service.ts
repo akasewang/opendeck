@@ -2,14 +2,14 @@ import { and, asc, desc, eq, gte, ilike, lte, or, type SQL, sql } from 'drizzle-
 import { db } from '@/db/client'
 import { curatedProjects, repos } from '@/db/schema'
 import { REPOSITORY_QUERY_LIMITS } from '@/features/repositories/constants/repository-validation'
+import { getContributionReadiness } from '@/features/repositories/services/contribution-readiness'
 import {
-  CONTRIBUTION_ACTIVE_WITHIN_DAYS,
-  CONTRIBUTION_READY_MIN_OPEN_ISSUES,
-  getContributionReadiness,
-  NON_PROJECT_TOPICS,
-  STARTER_FRIENDLY_TOPICS,
-} from '@/features/repositories/services/contribution-readiness'
+  buildContributionReadyConditions,
+  contributionScoreSql,
+  starterFriendlyCondition,
+} from '@/features/repositories/services/contribution-readiness-sql'
 import type { RepoSearchParams } from '@/features/repositories/types/repository-query'
+import { DAY_MS } from '@/utils/time'
 
 type RepoRow = typeof repos.$inferSelect
 type CuratedProjectRow = typeof curatedProjects.$inferSelect
@@ -28,93 +28,6 @@ function boundedPerPage(value?: number) {
 function cleanString(value?: string | null) {
   const cleaned = value?.trim()
   return cleaned || undefined
-}
-
-function starterTopicConditions() {
-  return STARTER_FRIENDLY_TOPICS.map(
-    (topic) => sql`${repos.topics} @> ${JSON.stringify([topic])}::jsonb`,
-  )
-}
-
-function starterFriendlyCondition() {
-  return or(eq(repos.hasGoodFirstIssues, true), ...starterTopicConditions())
-}
-
-function nonProjectTopicConditions() {
-  return NON_PROJECT_TOPICS.map(
-    (topic) => sql`${repos.topics} @> ${JSON.stringify([topic])}::jsonb`,
-  )
-}
-
-function nonProjectRepoCondition() {
-  const nonProjectTopics = or(...nonProjectTopicConditions()) || sql`false`
-
-  return sql`(
-    ${nonProjectTopics}
-    OR lower(coalesce(${repos.name}, '')) LIKE 'awesome-%'
-    OR lower(coalesce(${repos.description}, '')) LIKE '%awesome list%'
-    OR lower(coalesce(${repos.description}, '')) LIKE '%awesome lists%'
-    OR lower(coalesce(${repos.description}, '')) LIKE '%curated list%'
-    OR lower(coalesce(${repos.description}, '')) LIKE '%curated collection%'
-    OR lower(coalesce(${repos.description}, '')) LIKE '%collection of resources%'
-    OR lower(coalesce(${repos.description}, '')) LIKE '%list of resources%'
-    OR lower(coalesce(${repos.description}, '')) LIKE '%roadmap to%'
-    OR lower(coalesce(${repos.description}, '')) LIKE '%interview questions%'
-  )`
-}
-
-function buildContributionReadyConditions() {
-  const activeAfter = new Date(Date.now() - CONTRIBUTION_ACTIVE_WITHIN_DAYS * 24 * 60 * 60 * 1000)
-
-  return [
-    eq(repos.isArchived, false),
-    sql`${repos.language} is not null and ${repos.language} <> ''`,
-    sql`not ${nonProjectRepoCondition()}`,
-    sql`${repos.license} is not null and ${repos.license} <> ''`,
-    gte(repos.openIssues, CONTRIBUTION_READY_MIN_OPEN_ISSUES),
-    gte(repos.pushedAt, activeAfter),
-    sql`(
-      coalesce(length(${repos.description}), 0) > 0
-      OR coalesce(length(${repos.readmeExcerpt}), 0) > 0
-    )`,
-  ]
-}
-
-function contributionScoreSql() {
-  const starterTopics = or(...starterTopicConditions()) || sql`false`
-  const nonProjectRepo = nonProjectRepoCondition()
-
-  return sql<number>`(
-    case when ${repos.isArchived} = false then 10 else -50 end
-    + case when ${repos.language} is not null and ${repos.language} <> '' then 10 else -30 end
-    + case when ${nonProjectRepo} then -60 else 0 end
-    + case when ${repos.license} is not null and ${repos.license} <> '' then 15 else -20 end
-    + case
-        when ${repos.pushedAt} > now() - interval '90 days' then 15
-        when ${repos.pushedAt} > now() - interval '365 days' then 10
-        else -20
-      end
-    + case
-        when ${repos.openIssues} >= 5 then 15
-        when ${repos.openIssues} >= 1 then 8
-        else -20
-      end
-    + case when ${repos.hasGoodFirstIssues} then 25 else 0 end
-    + case when ${starterTopics} then 12 else 0 end
-    + case
-        when coalesce(length(${repos.description}), 0) > 0
-          OR coalesce(length(${repos.readmeExcerpt}), 0) > 0
-        then 10
-        else -10
-      end
-    + case when ${repos.defaultBranch} is not null and ${repos.defaultBranch} <> '' then 5 else 0 end
-    + case
-        when ${repos.stars} between 10 and 50000 then 10
-        when ${repos.stars} > 0 then 5
-        else 0
-      end
-    + case when ${repos.forks} > 0 then 5 else 0 end
-  )`
 }
 
 function buildConditions(params: RepoSearchParams) {
@@ -163,7 +76,7 @@ function buildConditions(params: RepoSearchParams) {
   if (params.updatedAfter) conditions.push(gte(repos.updatedAt, params.updatedAfter))
 
   if (params.activeOnly) {
-    const sixMonthsAgo = new Date(Date.now() - 180 * 24 * 60 * 60 * 1000)
+    const sixMonthsAgo = new Date(Date.now() - 180 * DAY_MS)
     conditions.push(gte(repos.pushedAt, params.pushedAfter || sixMonthsAgo))
   }
 
@@ -246,7 +159,7 @@ export async function listTrendingRepos(
   const page = boundedPage(params.page)
   const perPage = boundedPerPage(params.perPage)
   const offset = (page - 1) * perPage
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+  const thirtyDaysAgo = new Date(Date.now() - 30 * DAY_MS)
   const recentActivity = or(gte(repos.createdAt, thirtyDaysAgo), gte(repos.pushedAt, thirtyDaysAgo))
   const filters = buildConditions({ query: params.query, language: params.language })
   const where = and(

@@ -10,12 +10,12 @@ import { Input } from '@/components/ui/input'
 import { StatusPill } from '@/components/ui/status-pill'
 import { toast } from '@/components/ui/toast'
 import { API_ROUTES } from '@/config/routes'
+import { postAccountApi } from '@/features/account/api/account-api-client'
 import {
   ACCOUNT_HUB_ICON_BUTTON_CLASS,
   ACCOUNT_HUB_LIST_ITEM_EXIT,
   ACCOUNT_HUB_LIST_ITEM_LAYOUT,
 } from '@/features/account/components/account-hub/account-hub-elements'
-import { postAccountApi } from '@/features/account/api/account-api-client'
 import type { AccountOverview } from '@/features/account/types/account-hub'
 import { formatWhen } from '@/features/account/utils/account-formatters'
 import { isAuthUser } from '@/features/auth/utils/auth-response-validation'

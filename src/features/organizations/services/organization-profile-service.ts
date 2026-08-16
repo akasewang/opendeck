@@ -1,5 +1,5 @@
-import { getOrganizationDetails } from '@/features/organizations/services/organization-query-service'
 import { isValidEmail } from '@/features/auth/services/authentication-service'
+import { getOrganizationDetails } from '@/features/organizations/services/organization-query-service'
 import { cleanOptionalText, isRecord } from '@/lib/api/input-normalization'
 import { githubFetchJson } from '@/lib/github/client'
 
@@ -22,9 +22,7 @@ type GithubOwnerProfile = {
   html_url?: string | null
 }
 
-function optionalCount(value: unknown) {
-  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : null
-}
+import { toNonNegativeInteger } from '@/lib/api/type-guards'
 
 function optionalHttpUrl(value: unknown) {
   const text = cleanOptionalText(value, 2_000)
@@ -52,10 +50,10 @@ async function loadGithubProfile(owner: string) {
           email: cleanOptionalText(result.data.email),
           twitter_username: cleanOptionalText(result.data.twitter_username),
           type: cleanOptionalText(result.data.type),
-          public_repos: optionalCount(result.data.public_repos),
-          public_gists: optionalCount(result.data.public_gists),
-          followers: optionalCount(result.data.followers),
-          following: optionalCount(result.data.following),
+          public_repos: toNonNegativeInteger(result.data.public_repos),
+          public_gists: toNonNegativeInteger(result.data.public_gists),
+          followers: toNonNegativeInteger(result.data.followers),
+          following: toNonNegativeInteger(result.data.following),
           created_at: cleanOptionalText(result.data.created_at),
           updated_at: cleanOptionalText(result.data.updated_at),
           html_url: cleanOptionalText(result.data.html_url),

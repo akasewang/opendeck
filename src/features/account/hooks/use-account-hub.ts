@@ -4,8 +4,8 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from '@/components/ui/toast'
 import { API_ROUTES, appRoute, withQuery } from '@/config/routes'
-import { ACCOUNT_HUB_TABS, type AccountHubTabId } from '@/features/account/constants/account-hub'
 import { postAccountApi } from '@/features/account/api/account-api-client'
+import { ACCOUNT_HUB_TABS, type AccountHubTabId } from '@/features/account/constants/account-hub'
 import type {
   AccountHubCollectionDetail,
   AccountHubRepoWithState,
@@ -17,17 +17,17 @@ import {
   repositoryName,
   repositoryUpdateMessage,
 } from '@/features/account/utils/account-formatters'
-import { restoreListItem } from '@/features/account/utils/optimistic-list'
 import {
   isAccountCollectionDetail,
   isAccountIssueList,
   isAccountOverview,
   isAccountRecommendationPage,
 } from '@/features/account/utils/account-response-validation'
+import { restoreListItem } from '@/features/account/utils/optimistic-list'
 import { useAuth } from '@/features/auth/providers/auth-provider'
 import type { RepositoryApiItem } from '@/features/repositories/types/repository'
-import { isRecord } from '@/lib/api/input-normalization'
 import { apiErrorMessage } from '@/lib/api/errors'
+import { isRecord } from '@/lib/api/input-normalization'
 
 export function useAccountHub() {
   const { user, isLoading: authLoading, openAuth, refreshSession, signOut } = useAuth()
