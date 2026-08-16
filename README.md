@@ -92,7 +92,6 @@ flowchart TB
 
   subgraph data["Persistent data"]
     DB[("Neon Postgres<br/>repositories · users · workspace · audit")]
-    IMAGES[("Optimized image cache<br/>7-day minimum TTL")]
   end
 
   subgraph application["Next.js application"]
@@ -120,8 +119,7 @@ flowchart TB
   AUTH --> DB
   AUTH --> RESEND
   SERVICES -. authenticated live detail .-> GITHUB
-  GITHUB --> IMAGES
-  IMAGES --> BROWSER
+  GITHUB -. avatars .-> BROWSER
 ```
 
 The repository mirror is the source of truth for normal discovery and list views. A small number
@@ -300,10 +298,7 @@ npm run dev:mobile
 
 ### Image delivery
 
-GitHub avatars use the Next.js image optimizer rather than loading directly in the browser.
-OpenDeck requests only the sizes used by the interface, converts them to WebP and keeps optimized
-responses cacheable for at least seven days. The weekly ingestion schedule uses the same cadence,
-so repository refreshes and image-cache freshness remain aligned.
+GitHub avatars are loaded directly from GitHub's fast CDN to avoid bottlenecking the local server with image processing. OpenDeck passes specific size parameters to GitHub to request only the optimized dimensions used by the interface.
 
 ---
 
@@ -421,7 +416,8 @@ backoff.
 - Private and error responses are not stored in shared caches.
 - Repository feeds query the local Postgres mirror instead of repeating discovery searches.
 - Metric snapshots preserve repository movement without duplicating the repository row.
-- Optimized GitHub avatars use a seven-day minimum cache TTL and a bounded size list.
+- Heavy aggregate database queries, like the landing page organization query, are server-cached (`unstable_cache`) to ensure immediate rendering.
+- GitHub avatars bypass the local image optimizer and load directly from GitHub's fast CDN.
 - Client searches are debounced, and feature API clients keep domain-specific cache state.
 
 ---

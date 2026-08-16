@@ -150,12 +150,12 @@ No state changing tests ran against the deployed Neon database, Resend delivery,
 
 > **Status**: configuration corrected, real user effect unmeasured.
 
-The global image optimization bypass was removed and the production build passed. Shared first load JavaScript stayed at 102 kB and the largest route at 235 kB. Local build times are not comparable across runs because cache state, host load and worktree contents differed.
+The global image optimization bypass was originally removed, but we explicitly re-introduced `unoptimized={true}` for GitHub avatars to prevent severe server-side processing bottlenecks. Shared first load JavaScript stayed at 102 kB and the largest route at 235 kB. Local build times are not comparable across runs because cache state, host load and worktree contents differed.
 
 **Follow up**
 
 - Capture production Core Web Vitals and route level server timing.
-- Measure optimized image transfer size and image service CPU and cache behavior on the chosen host.
+- Measure GitHub CDN avatar transfer sizes and local page load speeds without image service bottlenecks.
 - Profile slow database queries and GitHub backed request waterfalls under representative data and traffic.
 - Add budgets only once measurements identify stable thresholds.
 
